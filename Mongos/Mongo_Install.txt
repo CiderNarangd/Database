@@ -1,0 +1,321 @@
+======= rts-sdb-chat01 MongoDB6 =======
+MongoDBv - 6.0.19
+OS - Rocky Linux release 9.2 (Blue Onyx)
+Port - 50020
+HostName - rts-sdb-chat01 
+
+[root@rts-sdb-chat01 /]# uname -m
+x86_64
+
+---- SELinux 종료 ----
+sestatus 
+-> selinux 상태 확인
+
+vi /etc/selinux/config
+SELINUX=disabled
+-> selinux 종료
+
+
+---- 스왑 off ----
+vi /etc/fstab
+#UUID=7eab310d-a09e-4c27-87a0-d41cb6807023 none                    swap    defaults        0 0
+-->해당줄 주석
+
+--필요 종속성 설치
+sudo yum install libcurl openssl xz-libs
+
+
+--- 디렉토리 & config 파일 생성
+mkdir -p /storage/install_files
+mkdir -p /data/mongo_data
+mkdir -p /log/mongo_logs 
+mkdir -p /mongo_backup
+mkdir 
+
+touch /etc/mongod.conf
+vi /etc/mongod.conf 
+
+============ mongod.conf =============
+systemLog:
+   destination: file
+   path: /log/mongo_logs/mongod.log
+   logAppend: true
+   logRotate: rename
+processManagement:
+   fork: false
+net:
+   bindIp: 0.0.0.0
+   port: 50020
+storage:
+   dbPath: /data/mongo_data
+setParameter:
+   enableLocalhostAuthBypass: false
+
+======================================
+
+
+--- 다운로드
+cd /storage/install_files
+wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-6.0.19.tgz
+
+tar -xvf mongodb-linux-x86_64-rhel90-6.0.19.tgz
+
+ln -s /storage/install_files/mongodb-linux-x86_64-rhel90-6.0.19/bin/mongos /usr/bin/mongos
+ln -s /storage/install_files/mongodb-linux-x86_64-rhel90-6.0.19/bin/mongod /usr/bin/mongod
+ln -s /storage/install_files/mongodb-linux-x86_64-rhel90-6.0.19/bin/install_compass /usr/bin/install_compass
+
+---- 계정 & 그룹 생성 & 디렉토리 권한주기
+
+groupadd mongod
+useradd -r -g mongod -s /bin/false mongod
+
+usermod -a -G mongod mongod
+
+chown -R mongod:mongod /data/mongo_data/*
+chown -R mongod:mongod /log/mongo_logs/*
+chown -R mongod:mongod /mongo_backup/*
+chown mongod:mongod /etc/mongod.conf
+
+#chown mongod:mongod /tmp/mongodb-50020.sock
+
+
+----- 서비스 등록 ----
+vi /etc/systemd/system/mongod.service
+ 
+===========================================================
+[Unit]
+Description=MongoDB Database Server
+After=network.target
+
+[Service]
+User=mongod
+Group=mongod
+ExecStart=/usr/bin/mongod --config /etc/mongod.conf
+LimitFSIZE=infinity
+LimitCPU=infinity
+LimitAS=infinity
+LimitNOFILE=64000
+LimitNPROC=64000
+
+
+[Install]
+WantedBy=multi-user.target
+
+===============================================================
+-->적용 안되었을시 reboot후 확인
+
+**https://www.mongodb.com/ko-kr/docs/v6.0/reference/ulimit/
+
+systemctl daemon-reload
+systemctl enable mongod
+systemctl start mongod
+systemctl stop mongod
+systemctl status mongod
+
+ps -ef | grep mongo
+cat /proc/mongo_pid/limits | grep "Max open files"
+-->몽고디비 프로세스 아이디 확인후 오픈파일 확인
+
+
+------THP 비활성화 ---- 
+https://www.mongodb.com/ko-kr/docs/v6.0/tutorial/transparent-huge-pages/
+
+cat /sys/kernel/mm/transparent_hugepage/enabled
+cat /sys/kernel/mm/transparent_hugepage/defrag
+
+
+---- thp disbale 서비스 등록 ----
+vi /etc/systemd/system/disable-thp.service
+================================================
+
+[Unit]
+Description=Disable Transparent Huge Pages (THP)
+After=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled"
+ExecStart=/bin/bash -c "echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag"
+
+[Install]
+WantedBy=multi-user.target
+
+=================================================
+
+# 서비스 데몬 재로드
+systemctl daemon-reload
+systemctl enable disable-thp.service
+systemctl start disable-thp.service
+systemctl status disable-thp.service
+systemctl stop disable-thp.service
+
+
+------LogRotate ---------------
+vi /etc/logrotate.d/mongod
+============================================
+/log/mongo_logs/mongod.log {
+  daily
+  size 100M
+  rotate 5
+  missingok
+  dateext
+  notifempty
+  create 640 mongod mongod
+  sharedscripts
+  postrotate
+    /bin/kill -SIGUSR1 `ps -e | grep mongod | awk '{print $1}'` >/dev/null 2>&1 || true
+  endscript
+}
+===============================================
+# logrotate -d /etc/logrotate.conf -> debug 모드
+# logrotate -f /etc/logrotate.conf -> 강제 실행모드
+
+---MongoShell 설치
+wget https://downloads.mongodb.com/compass/mongodb-mongosh-2.3.3.x86_64.rpm
+rpm ivh mongodb-mongosh-2.3.3.x86_64.rpm
+
+---------
+백업툴 다운로드
+mongodb database tools
+https://fastdl.mongodb.org/tools/db/mongodb-database-tools-rhel93-x86_64-100.10.0.tgz
+
+percona mongo backup
+wget https://downloads.percona.com/downloads/percona-backup-mongodb/percona-backup-mongodb-2.7.0/binary/redhat/9/x86_64/percona-backup-mongodb-2.7.0-1.el9.x86_64.rpm
+
+-------- 백업 ----------
+기존 RTS 채팅서버 데이터베이스 확인결과 용량 많이 안사용하고 있음.
+일단 덤프로 구성하고, 추후 percona backup으로 변경 예정
+full_backup_tos3.py
+
+//크론탭 설정
+crontab -l
+######## full backup #######
+0 6 * * * python3 /storage/scripts/full_backup_tos3.py >> /storage/scripts/cron_log/log.txt 2>&1
+
+//s3 다운로드&업로드를 위한 aws-cli 설치
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
+/usr/local/bin/aws --version (버전 나오면 설치 완료)
+
+
+-------- 모니터링 ------------------
+mongodb exporter 다운
+wget https://github.com/percona/mongodb_exporter/releases/download/v0.42.0/mongodb_exporter-0.42.0.linux-amd64.tar.gz
+tar -xvf mongodb_exporter-0.42.0.linux-amd64.tar.gz
+MongodbExporter port - 9116
+
+exporter 아래 디렉토리 참조
+/storage/mengine/*
+
+서비스 등록
+------------------------------------------------------------
+[Unit]
+Description=Prometheus MongoDB Exporter
+Documentation=https://github.com/percona/mongodb_exporter
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/storage/mengine/mongodb_exporter --mongodb.uri=mongodb://localhost:50020 --compatible-mode --collector.diagnosticdata --collector.replicasetstatus --collector.dbstats --collector.topmetrics --collector.indexstats --collector.collstats --web.listen-address=:9116
+SyslogIdentifier=mongodb_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+------------------------------------------------------------------
+
+
+-----계정 & 롤 셋팅---------
+
+--그냥 루트계정
+use admin;
+db.createUser(
+  {
+    user: "root",
+    pwd:  "password",
+    roles: [
+		{ role: "root", db: "admin" }
+	]
+  })
+  
+
+--백업용
+db.createUser(
+  {
+    user: "backup",
+    pwd:  "password",
+    roles: [
+		{ role: "backup", db: "admin"},	  // 백업 권한 부여
+		{ role: "restore", db: "admin" }  // 복구 권한 부여 
+	]
+  }
+)
+
+--dba 계정
+db.createUser(
+  {
+    user: "ddous",
+    pwd:  "password",
+    roles: [
+		{ role: "root", db: "admin"}
+	]
+  }
+)
+
+db.createUser(
+  {
+    user: "jejun",
+    pwd:  "password",
+    roles: [
+		{ role: "root", db: "admin"}
+	]
+  }
+)
+
+
+--모니터링용
+db.createUser(
+  {
+    user: "prometheus",
+    pwd:  "password",
+    roles: [
+		{role: "clusterMonitor",db: "admin"},
+		{role: "read", db: "local"}
+	]
+  }
+)
+
+
+-- 서비스 계정
+db.createUser(
+  {
+    user: "rtsgmacc",
+    pwd:  "password",
+    roles: [
+		{role: "readWrite",db: "rts_chat"}
+	]
+  }
+)
+
+-- 개발자 계정
+db.createUser(
+  {
+    user: "530Admin",
+    pwd:  "password",
+    roles: [
+		{ role: "dbAdmin", db: "rts_chat" },
+		{ role: "readWrite", db: "rts_chat" }
+	]
+  }
+)
+
+
+---------------------------------------------------------------------------------
+
+
+추 후 해야할일
+- 레플리카셋 구성 R&D
+- percona mongobackup 적용
+- 고도화된 권한 정책 수립.

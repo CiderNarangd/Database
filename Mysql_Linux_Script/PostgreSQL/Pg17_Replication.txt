@@ -1,0 +1,8 @@
+Master ip - 14.47.113.6
+Slave ip - 14.47.113.74
+
+사용중인 포트
+ss -lntp | grep 5432
+
+cd /pgdata
+vi postgresql.conf

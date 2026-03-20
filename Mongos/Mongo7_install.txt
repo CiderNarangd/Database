@@ -1,0 +1,141 @@
+MongoDB Install 
+OS - Oracle Linux 9.4  
+arch - x86
+DB version - Mongo7.0.20
+
+
+//종속성 설치
+yum -y install libcurl openssl xz-libs
+
+
+//스왑 off or 활성률 낮게 설정
+or vm.swappiness 1 or 0 설정
+echo "vm.swappiness = 1" | sudo tee -a /etc/sysctl.conf
+sysctl -p
+
+reboot
+
+cat /proc/sys/vm/swappiness
+1
+
+
+//THP 비활성화
+https://www.mongodb.com/ko-kr/docs/v6.0/tutorial/transparent-huge-pages/
+
+cat /sys/kernel/mm/transparent_hugepage/enabled
+cat /sys/kernel/mm/transparent_hugepage/defrag
+
+
+---- thp disbale 서비스 등록 ----
+vi /etc/systemd/system/disable-thp.service
+================================================
+
+[Unit]
+Description=Disable Transparent Huge Pages (THP)
+After=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled"
+ExecStart=/bin/bash -c "echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag"
+
+[Install]
+WantedBy=multi-user.target
+
+=================================================
+
+# 서비스 데몬 재로드
+systemctl daemon-reload
+systemctl enable disable-thp.service
+systemctl start disable-thp.service
+systemctl status disable-thp.service
+systemctl stop disable-thp.service
+
+
+
+// Download
+wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.20.tgz
+tar -xvf mongodb-linux-x86_64-rhel90-7.0.20.tgz
+
+mv mongod mongos install_compass /usr/local/bin
+
+
+//데이터 디렉토리 & 로그 디렉토리 & 백업 디렉토리
+mkdir -p /mongodata
+mkdir -p /mongolog
+mkdir -p /mongobackup
+
+// 계정생성 및 db디렉토리 권한 설정
+groupadd mongod
+useradd -r -g mongod -s /bin/false mongod
+usermod -a -G mongod mongod
+
+chown -R mongod:mongod /mongodata
+chown -R mongod:mongod /mongolog
+chown -R mongod:mongod /mongobackup
+
+--> db실행후 내부 파일들 권한 확인후 변경
+chown -R mongod:mongod /mongodata/*
+chown -R mongod:mongod /mongolog/*
+chown -R mongod:mongod /mongobackup/*
+
+
+// 설정파일 생성
+vi /etc/mongod.conf
+=====================================
+systemLog:
+  destination: file
+  path: /mongolog/mongod.log
+  logAppend: true
+
+storage:
+  dbPath: /mongodata
+
+net:
+  bindIp: 0.0.0.0
+  port: 27017
+
+processManagement:
+  fork: false
+  
+========================================
+chown mongod:mongod /etc/mongod.conf
+
+
+실행 서비스 등록
+vi /etc/systemd/system/mongod.service
+===========================================================
+[Unit]
+Description=MongoDB Database Server
+After=network.target
+
+[Service]
+User=mongod
+Group=mongod
+ExecStart=/usr/local/bin/mongod --config /etc/mongod.conf
+LimitFSIZE=infinity
+LimitCPU=infinity
+LimitAS=infinity
+LimitNOFILE=64000
+LimitNPROC=64000
+
+
+[Install]
+WantedBy=multi-user.target
+
+===============================================================
+systemctl daemon-reload
+systemctl enable mongod
+systemctl start mongod
+systemctl stop mongod
+systemctl status mongod
+
+
+
+
+
+**mongosh 설치
+wget https://downloads.mongodb.com/compass/mongodb-mongosh-2.5.1.x86_64.rpm
+rpm -Uvh mongodb-mongosh-2.5.1.x86_64.rpm
+
+mongosh 접속확인

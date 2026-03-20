@@ -1,0 +1,8 @@
+[ 2024-05-31 03:07:06] Mysql Manager..
+[ 2024-05-31 03:07:06] Manager Server Mysql Connected...
+[ 2024-05-31 03:07:07] Check Mysql Status...
+[ 2024-05-31 03:07:07] ==============================================
+[ 2024-05-31 03:07:07] host_name template
+[ 2024-05-31 03:07:07] use command : ssh root@211.184.32.98 systemctl status mysqld
+[ 2024-05-31 03:07:07] Active: active (running) since Thu 2024-05-30 19:22:38 KST; 7h ago
+[ 2024-05-31 03:07:07] ================================================

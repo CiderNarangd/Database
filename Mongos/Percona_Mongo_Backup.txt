@@ -1,0 +1,108 @@
+MongoDB 7 Percona Backup
+version - 2.9.1
+
+//Percona Mongodb bakcup 다운로드
+
+//Support version
+https://docs.percona.com/percona-backup-mongodb/details/versions.html
+
+//모든 서버들 진행
+cd /storage/downloads
+wget https://downloads.percona.com/downloads/percona-backup-mongodb/percona-backup-mongodb-2.9.1/binary/tarball/percona-backup-mongodb-2.9.1-x86_64.tar.gz
+
+tar -xvf percona-backup-mongodb-2.9.1-x86_64.tar.gz
+
+//바이너리 이동
+cp pbm pbm-agent pbm-agent-entrypoint pbm-speed-test /usr/local/bin
+
+
+//백업용 계정 생성( Primary )
+use admin
+db.createUser({
+  user: "perconabackup",
+  pwd: "mongobackup",
+  roles: [
+    { role: "backup", db: "admin" },
+    { role: "restore", db: "admin" },
+    { role: "clusterMonitor", db: "admin" },
+    { role: "readWrite", db: "pbm" }
+  ]
+})
+
+
+//설정파일 생성 및 설정
+vi /etc/pbm.yaml
+===========================================
+storage:
+  type: filesystem
+  filesystem:
+    path: /mongobackup
+=============================================
+	
+pbm status \
+  --mongodb-uri="mongodb://perconabackup:mongobackup@localhost:27017/?authSource=admin&replicaSet=rs0"
+
+
+nohup ./pbm-agent --config=/etc/pbm.yaml \
+  --mongodb-uri="mongodb://perconabackup:mongobackup@localhost:27017/?authSource=admin&replicaSet=rs0"
+  
+  
+  
+ 
+//pbm-agenmt 서비스 등록(모든 노드) 
+vi /etc/systemd/system/pbm-agent.service
+===================================================
+
+[Unit]
+Description=Percona Backup for MongoDB Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/pbm-agent --config=/etc/pbm.yaml \
+  --mongodb-uri="mongodb://perconabackup:mongobackup@localhost:27017/?authSource=admin&replicaSet=rs0"
+Restart=always
+User=mongod
+Group=mongod
+
+[Install]
+WantedBy=multi-user.target
+
+=======================================================
+
+systemctl daemon-reload
+systemctl enable --now pbm-agent
+systemctl status pbm-agent
+
+
+
+
+[root@mongo1 bin]# ./pbm status --mongodb-uri="mongodb://perconabackup:mongobackup@mongo1:27017/?authSource=admin&replicaSet=rs0"
+Cluster:
+========
+rs0:
+  - mongo1:27017 [P]: pbm-agent [v2.9.1] OK
+  - mongo2:27017 [S]: pbm-agent [v2.9.1] OK
+  - mongo3:27017 [S]: pbm-agent [v2.9.1] OK
+
+
+PITR incremental backup:
+========================
+Status [OFF]
+
+Currently running:
+==================
+(none)
+
+Backups:
+========
+FS  /mongobackup
+  (none)
+
+
+
+
+pbm backup --mongodb-uri="mongodb://perconabackup:mongobackup@mongo1:27017/?authSource=admin&replicaSet=rs0"
+pbm list --mongodb-uri="mongodb://perconabackup:mongobackup@mongo1:27017/?authSource=admin&replicaSet=rs0"
+
+물리백업 지원X 
+퍼코나 서버 사용해야함

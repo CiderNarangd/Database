@@ -1,0 +1,13 @@
+Mongo Dump Restore Script
+
+S3 Download
+cd /mongo_backup
+/usr/local/bin/aws s3 cp --recursive s3://joycity-mysql-backup-seoul/Backup/RTS_CHAT_Mongo/{backup_date}/{backup_date}.tar.gz
+*{backup_date} -> 20240525
+** Local 저장된 백업본이 있다면 다운로드 필요x
+
+tar -zxvf {backup_date}.tar.gz
+
+
+-- 복구할 데이터베이스마다 아래 명령어 사용, 기존db 날리지않고 복구할시 drop 옵션 제거하고 db명 변경
+mongorestore --host 127.0.0.1 --port 50020 --drop {old_db} --db {backup_db} /mongo_backup/{backup_date}/{backup_db}

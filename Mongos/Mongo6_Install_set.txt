@@ -1,0 +1,319 @@
+=============MonogoDB6 Install============
+oracle virtualbox 7
+
+OS - Rocky Linux release 9.4 (Blue Onyx)
+CPU - 4Core
+Memory -4096Mb
+Disk - 20Gb
+
+DB Version - MongoDB6.0.17
+
+- rokcy9 이상에서는 엔터프라이즈/커뮤니케이션 둘다 6.0.4 버전 이상으로
+
+HostName : mongo6-test (replica set 구성 필요시, hostname 변경. monogo_primary, mongo_secondary_1, mongo_secondary_2)
+
+ref - https://www.mongodb.com/ko-kr/docs/v6.0/tutorial/install-mongodb-on-red-hat-tarball/ 
+
+------OS 계정--------
+OS 계정
+user : joy-dba // joy123!@#
+root p/w - joy123!@#
+
+-------------install--------------
+
+----설치 리스트 
+ - MongoDB 6.0.17
+ - Mongosh
+ - MongoDB Database Tools(mongodump & restore)
+ - MongoDB_exporter
+
+root계정으로 진행
+
+//필요 종속성 설치
+sudo yum install libcurl openssl xz-libs
+
+mkdir -p /storage/install_file
+cd /storage/install_file
+
+->MongoDB6 tgz 압축파일 다운
+wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-6.0.17.tgz
+ ** wget이 작동하지 않아서 호스트pc에서 다운받고 편의상 버츄얼박스 공유기능으로 게스트os로 옮겼음
+
+
+mv mongodb-linux-x86_64-rhel90-6.0.17.tgz /storage/install_file/ 
+->파일 이동
+
+tar -zxvf mongodb-linux-*-6.0.17.tgz
+->압축 해제
+
+
+*루트 계정으로 진행하였기에 os에 mongod 계정 및 그룹 생성x
+
+[root@mongo6-test install_file]# sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing   	<<<<<<<<<<<<<<<<<<
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      33
+
+->SELINUX 상태 확인
+
+vi /etc/selinux/config
+SELINUX=disabled
+
+-> 실행중일시 disabled로 변경하여 종료후 리붓
+
+
+ulimit -a ->openfile수 확인
+ulimit -n 64000
+-> openfile 밸류 64000미만일시 변경
+**https://www.mongodb.com/ko-kr/docs/v6.0/reference/ulimit/
+
+
+
+//바이너라 파일 이동 or 링크
+
+sudo ln -s  /path/to/the/mongodb-directory/bin/* /usr/local/bin/
+
+[root@mongo6-test bin]# ll
+합계 240412
+-rwxr-xr-x. 1 joy-dba joy-dba     15205  8월 14 07:48 install_compass
+-rwxr-xr-x. 1 joy-dba joy-dba 142044104  8월 14 08:26 mongod
+-rwxr-xr-x. 1 joy-dba joy-dba 104117664  8월 14 08:27 mongos
+
+ln -s /storage/install_file/mongodb-linux-x86_64-rhel90-6.0.17/bin/* /usr/local/bin/*
+
+ln -s /storage/install_file/mongodb-linux-x86_64-rhel90-6.0.17/bin/install_compass /usr/local/bin/install_compass
+ln -s /storage/install_file/mongodb-linux-x86_64-rhel90-6.0.17/bin/mongod /usr/local/bin/mongod
+ln -s /storage/install_file/mongodb-linux-x86_64-rhel90-6.0.17/bin/mongos /usr/local/bin/mongos
+
+
+//데이터 & 로그 디렉토리 생성
+--Default dir
+mkdir -p /var/lib/mongo
+mkdir -p /var/log/mongodb
+
+--user dir
+//데이터 디렉토리
+mkdir -p /storage/mongo/data
+//로그 디렉토리
+mkdir -p /storage/mongo/log
+
+--> /etc/mongod.conf 설정 파일생성 및 옵션값들 변경
+
+touch /etc/mongod.conf
+vi /etc/mongod.conf 
+
+============mongod.conf =============
+systemLog:
+   destination: file
+   path: "/storage/mongo/log/mongod.log"
+   logAppend: true
+processManagement:
+   fork: true
+net:
+   bindIp: 0.0.0.0
+   port: 27017
+storage:
+   dbpath: "/storage/mongo/data"
+setParameter:
+   enableLocalhostAuthBypass: false
+
+======================================
+
+*bindIP: string,default - localhost
+	ex) bindIP: 127.0.0.1, 10.0.0.25
+		바인딩 하고자 하는 복수IP 지정 가능, 테스트 환경이기에 편의상 0.0.0.0으로 바인딩
+*bindIpAll: boolean, default- false
+		- 전체 ip 바인딩
+*fork: boolean, default - false
+		- 데몬으로 실행할지 여부
+
+**옵션값들 아래 문서 참조
+https://www.mongodb.com/ko-kr/docs/manual/reference/configuration-options/
+
+
+///실행
+[root@mongo6-test bin]# mongod --config /etc/mongod.conf
+{"t":{"$date":"2024-09-30T04:33:52.588Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"enableLocalhostAuthBypass":{"default":true,"value":false}}}}
+about to fork child process, waiting until server is ready for connections.
+forked process: 6550
+child process started successfully, parent exiting
+
+
+//실행 확인 & 버전 확인
+[root@mongo6-test bin]# ps -ef | grep mongo
+avahi        763       1  0 09:33 ?        00:00:00 avahi-daemon: running [mongo6-test.local]
+root        6550    4008  0 13:33 ?        00:00:01 mongod --config /etc/mongod.conf
+
+[root@mongo6-test install_file]# mongod -version
+db version v6.0.17
+Build Info: {
+    "version": "6.0.17",
+    "gitVersion": "1b0ca02043c6d35d5cfdc91e21fc00a05d901539",
+    "openSSLVersion": "OpenSSL 3.0.7 1 Nov 2022",
+    "modules": [],
+    "allocator": "tcmalloc",
+    "environment": {
+        "distmod": "rhel90",
+        "distarch": "x86_64",
+        "target_arch": "x86_64"
+    }
+}
+
+//mongosh 설치
+6.0에서는 mongo 커맨드가 포함되지 않아서 mongosh를 설치하여 접속이 필요함.
+
+--mongosh rpm 다운
+mongodb-mongosh-2.3.1.x86_64.rpm
+
+rpm -ivh mongodb-mongosh-2.3.1.x86_64.rpm
+
+--접속 확인
+mongosh
+[root@mongo6-test install_file]# mongosh
+Current Mongosh Log ID:	66fa2e85588878bd45964032
+Connecting to:		mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.3.1
+Using MongoDB:		6.0.17
+Using Mongosh:		2.3.1
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
+You can opt-out by running the disableTelemetry() command.
+
+------
+   The server generated these startup warnings when booting
+   2024-09-30T13:33:52.925+09:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2024-09-30T13:33:52.925+09:00: You are running this process as the root user, which is not recommended
+   2024-09-30T13:33:52.925+09:00: /sys/kernel/mm/transparent_hugepage/enabled is 'always'. We suggest setting it to 'never' in this binary version
+   2024-09-30T13:33:52.925+09:00: Soft rlimits for open file descriptors too low
+------
+
+test> 
+
+//alias 설정
+dbstart - mongod --config /etc/mongod.conf
+
+------------ DB 계정 & 권한 ----------
+//역할 및 계정 생성 둘다 가능
+//몽고db는 데이터베이스별로 계정 생성 필요하고 패스워드와 아이디가 동일하도 다른계정으로 인식
+
+use admin;
+-- 유저 생성 
+-- 정책에 따라 커스톰 롤 생성해서 사용하는것으로 수정 될수도, 
+	아래 쿼리는 빌트인 롤 사용
+ex)
+--DBA계정
+db.createUser(
+  {
+    user: "joy-dba",
+    pwd:  "PASSWORD",
+    roles: ["dbAdmin"]
+  }
+)
+--개발자 계정
+db.createUser(
+  {
+    user: "joy-dev",
+    pwd:  "PASSWORD",
+    roles: [ {role: "readWrite", db: "사용할db"} ]
+  }
+)
+--서비스 계정
+db.createUser(
+  {
+    user: "joy-svc",
+    pwd:  "PASSWORD",
+    roles: [ {role: "readWrite", db: "사용할db"} ]
+  }
+)
+--백업 계정
+db.createUser(
+  {
+    user: "joy-bak",
+    pwd:  "PASSWORD",
+    roles: [ 
+	{ role: "backup", db: "admin" },  // 백업 권한 부여
+    { role: "restore", db: "admin" }  // 복구 권한 부여 
+	]
+  }
+)
+
+--유저 삭제
+db.dropUser("joy-dba")
+
+** https://www.mongodb.com/ko-kr/docs/v6.0/reference/built-in-roles/
+ -> mongodb built-in role
+
+
+
+------------ Backup & Resetore---------------
+1. mongodump & mongorestore 
+	- 몽고디비에서 제공하는 기본 백업&복구 툴
+	- insert문이 나열된 파일로 떨어짐, 백업복구 시간 매우 큼
+	- 증분백업 지원x, PITRecovery 지원x
+		
+2. percona backup for mongodb(이하 PBM) 
+	- replicaset과 sharded cluster 환경에서 효과적사용 가능, PITRecovery 제공
+	- s3에 직접 저장 기능도 있음.
+	- 증분백업 지원o, PITRecovery 지원o 
+
+-----> RTS에선 단일 인스턴스에 채팅서버 용도로 필요하다했음. 데이터의 중요도가 떨어지므로
+		일단은 mongodump&restore 사용해도 무방할것으로 보임
+		but, 향후 다른 서비스들에서도 몽고디비를 사용하겠다고 요구할수도 있고,
+		더 큰 서비스에서 사용할수도 있으므로
+		PBM까지는 준비가 필요할것으로 보임.
+	
+-----------------------------------------------
+mongodb backup
+//mongodb-database-tool 설치
+mv mongodb-database-tools-rhel93-x86_64-100.10.0.tgz /storage/install_file
+
+cd /storage/install_file
+tar -zxvf mongodb-database-tools-rhel93-x86_64-100.10.0.tgz
+cd /storage/install_file/mongodb-database-tools-rhel93-x86_64-100.10.0/bin
+
+ln -s /storage/install_file/mongodb-database-tools-rhel93-x86_64-100.10.0/bin/mongodump /usr/local/bin/mongodump
+ln -s /storage/install_file/mongodb-database-tools-rhel93-x86_64-100.10.0/bin/mongorestore /usr/local/bin/mongorestore
+*database-tools에 더 많은 프로그램 있으나 당장 사용할것만 링크
+
+
+//백업 디렉토리 생성
+mkdir -p /storage/mongo/backup/{backup_date}
+ -> backup 디렉토리 안에 일별로 저장, {backup_date}는 스크립트에서 자동 생성
+
+//백업 스크립트 작성
+mkdir -p /storage/scripts
+cd /storage/scripts
+
+touch mongo_fullbackup.py
+-> mongodump를 사용한 풀백업 스크립트
+
+vi mongo_fullbackup.py
+-> 별도 참조
+
+//크론탭 설정
+crontab -e
+### Mongodb full backup script ###
+#0 18 * * * python3 /storage/scripts/mongo_fullbackup.py
+
+
+//리스토어
+ 
+-----DB 모니터링--------
+- mongodb_exporter (https://github.com/percona/mongodb_exporter)
+  사용해서 프로메테우스와 연동
+- dashboard - grafana Labs에서 예쁜 템플릿 사용
+
+
+
+-->설치 자동화 스크립트?
+
+
+

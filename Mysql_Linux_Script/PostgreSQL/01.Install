@@ -1,0 +1,56 @@
+PostgresSQL 17.4 설치
+Oracle Linux 9.4
+
+
+
+필요패키지 설치
+dnf install -y wget tar gcc make readline-devel zlib-devel
+
+
+cd /storage/download/
+wget https://ftp.postgresql.org/pub/source/v17.6/postgresql-17.6.tar.gz
+
+tar -xvf postgresql-17.6.tar.gz 
+
+
+ls -al 
+drwxrwxr-x 6 root root      4096 Aug 12 06:04 postgresql-17.6
+-rw-r--r-- 1 root root  28141372 Aug 12 06:16 postgresql-17.6.tar.gz
+
+
+
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf -qy module disable postgresql
+sudo dnf install -y postgresql17-server
+sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
+sudo systemctl enable postgresql-17
+sudo systemctl start postgresql-17
+
+
+ ps -ef | grep postgre
+postgres    1066       1  0 21:50 ?        00:00:00 /usr/pgsql-17/bin/postgres -D /var/lib/pgsql/17/data/
+postgres    1125    1066  0 21:50 ?        00:00:00 postgres: logger 
+postgres    1136    1066  0 21:50 ?        00:00:00 postgres: checkpointer 
+postgres    1137    1066  0 21:50 ?        00:00:00 postgres: background writer 
+postgres    1543    1066  0 21:50 ?        00:00:00 postgres: walwriter 
+postgres    1544    1066  0 21:50 ?        00:00:00 postgres: autovacuum launcher 
+postgres    1545    1066  0 21:50 ?        00:00:00 postgres: logical replication launcher 
+root        4066    4003  0 21:51 pts/0    00:00:00 grep --color=auto postgre
+
+
+bin 경로 - /usr/pgsql-17
+
+
+//데이터베이스 초기화
+/usr/pgsql-17/bin/postgresql-17-setup initdb
+
+
+
+
+//postgre 계정 생성
+// 데이터 & 로그 디렉토리 변경
+
+
+mkdir -p /pgdata
+mkdir -p /pglog
+
