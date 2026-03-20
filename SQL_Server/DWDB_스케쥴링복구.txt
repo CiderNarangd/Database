@@ -1,0 +1,214 @@
+스케쥴링 복구 작업
+
+Job - DSS_SyncDailyStat
+1. SyncFS2_GSP2DW
+	exec DSS_DM.dbo.prSyncGSP2DW
+	
+2. SyncFSFZ2DW
+	EXEC DSS_DM.dbo.prSyncFSFZ2DW
+	
+3. MergeDWTable
+	EXEC DSS_DM.dbo.prSyncDW2DSS
+	--EXEC DSS_DM.dbo.prSyncMA_SalesReport
+	   --> DIM_MonthlyConfig 테이블에 값을 설정해줘야 하는데 히스토리가 없어 설정 불가능, 해당테이블 인서트가 2020년까지만 되어있고, 그이후로 없음.
+			일단 중지. WeeklySalesReport 테이블은 DIM_MonthlyConfig 테이블 값 협의하에 삽입 후 테스트 진행 예정
+==========================================================	
+    Test용  테이블 & SP 생성 접미에 _T 붙여서 구분, 제약조건, 인덱스 등 모든 개체들에 대하여 _T를 붙여서 생성
+	
+
+1번잡 - SyncFS2_GSP2DW
+--Test용 테이블--
+FACT_ITEM_DW_T
+DailyUserTraffic_T
+LiveStat_DW_T
+
+--Test용 SP--
+prSyncGSP2DW_T
+
+
+2번잡 - SyncFSFZ2DW
+--Test용 테이블--
+FACT_ACTIVE_DW_T
+FACT_SALES_DW_T
+
+--Test용 SP --
+prSyncFSFZ2DW_T
+
+
+3번잡 - MergeDWTable
+--Test용 테이블 --
+FACT_ACTIVE_T
+FACT_ITEM_T
+FACT_SALES_T
+LiveStat_T
+
+
+WeeklySalesReport_T
+
+
+--Test용 SP--
+[prSyncDW2DSS_T]
+
+--하단 sp 작업 실행X
+ -> [DIM_MonthlyConfig] 해당 테이블에 데이터값이 입력 되어있어야 프로시저 정상작동이나 21년부터 데이터 입력X 
+prSyncMA_SalesReport_T
+prSyncMovingAverage_T
+prSetWeeklySalesReport_T
+
+
+잡 살리고 테스트
+
+============================ 테스트용 잡 생성=======================================
+USE [msdb]
+GO
+
+/****** Object:  Job [DSS_SyncDailyStat]    Script Date: 2024-11-04 오후 6:04:25 ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 2024-11-04 오후 6:04:25 ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'DSS_SyncDailyStat_T', 
+		@enabled=0, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'설명이 없습니다.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'bi_riscky', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [1. SyncFS2_GSP2DW]    Script Date: 2024-11-04 오후 6:04:25 ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'1. SyncFS2_GSP2DW', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'exec DSS_DM.dbo.prSyncGSP2DW_T', 
+		@database_name=N'DSS_DM', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [2. SyncFSFZ2DW]    Script Date: 2024-11-04 오후 6:04:25 ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'2. SyncFSFZ2DW', 
+		@step_id=2, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'EXEC DSS_DM.dbo.prSyncFSFZ2DW_T', 
+		@database_name=N'DSS_DM', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [3. MergeDWTable]    Script Date: 2024-11-04 오후 6:04:25 ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'3. MergeDWTable', 
+		@step_id=3, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'EXEC DSS_DM.dbo.prSyncDW2DSS_T
+EXEC DSS_DM.dbo.prSyncMA_SalesReport_T', 
+		@database_name=N'DSS_DM', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'DailyDSS_DM', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=1, 
+		@freq_subday_interval=0, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20140530, 
+		@active_end_date=99991231, 
+		@active_start_time=83000, 
+		@active_end_time=235959, 
+		@schedule_uid=N'7cb3b992-b4c2-4863-80f5-0f14c275c9aa'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+GO
+
+=============================================================================================
+SalesReport SP 는 주석치고 잡 테스트
+11/04 오후 6시 20분 잡 실행 성공, 잡 스케쥴링 on
+11/05 오전 8시 30분 실행 성공
+11/06 오전 8시 30분 실행 성공
+
+11/04,05 두번의 스케쥴링으로 생성된 데이터
+프리스타일 PM팀 허준호님께 테스트 데이터 전달 및 검토 요청
+-> 일단 이상없을것 같다하여, 좀 더 데이터 수집후 한번 더 검토 요청 & WeeklyReport 관련 값들 협의 예정
+
+
+11/13 
+DIM_MonthlyConfig 해당 테이블에 히스토리가 끊겨 있기에 값을 넣는것이 불가능하여
+WeeklySalesReport 테이블 데이터 ETL 불가
+
+23~24년도 데이터 LiveStat_2024 테이블 생성후 백업
+기존에 사용하던 스케쥴링 잡 활성화.
+
+insert into dbo.LiveStat_2024
+SELECT [StatDate]
+      ,[Game]
+      ,[Nation]
+      ,[Country]
+      ,[DayType]
+      ,[Sales]
+      ,[PrivSales]
+      ,[CafeSales]
+      ,[MaxCU]
+      ,[AvgCU]
+      ,[NewUser]
+      ,[UU]
+      ,[PlayTime]
+      ,[CafeRate]
+      ,[PayRate]
+      ,[ARPPU]
+      ,[PayUser]
+      ,[DT]
+  FROM [DSS_DM].[dbo].[LiveStat]
+  where StatDate >= '2023-01-01'
+  order by StatDate desc
+  
+//기존 테스트용 테이블들 삭제
+drop table FACT_ACTIVE_DW_T
+drop table FACT_ACTIVE_T
+
+drop table FACT_ITEM_DW_T
+drop table FACT_ITEM_T
+
+drop table FACT_SALES_DW_T
+drop table FACT_SALES_T
+
+drop table LiveStat_DW_T
+--drop table LiveStat_T --> 얘는 일단 살려둠
+
+

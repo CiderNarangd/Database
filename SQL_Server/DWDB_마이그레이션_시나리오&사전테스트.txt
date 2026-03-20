@@ -1,0 +1,321 @@
+DBDW01 JCTWareHoust 마이그레이션 시나리오 & 사전 테스트
+Windows Server 2008R2 EOS 대상 & 오래된 물리장비 교체작업으로 
+최신버전의 OS&DB 로 마이그레이션
+OS - WindowServer 2008R2 -> WindowServer2022
+DB - SQLServer 2008 R2 -> SQLServer 2022
+DBPort - 50004
+
+HW/OS 체크 및 변동 사항
+1. 스토리지 용량 체크 필요 -> 백업본을 저장할수 있는 여유가 있는지
+2. 스펙 -> cpu 사용률이 낮기에 신규 DWDB 호스트는 스펙을 낮춤
+           Core : 8 -> 6
+		   Mem  : 동일
+
+
+DB체크사항
+
+1.복제 -> 단일 인스턴스이기 때문에 고려사항X
+
+2.백업 툴 사용 여부
+-> MS에서 공식으로 지원하는 Data Migration Assistant가 존재
+   DBDW01 호스트에 OS 호환이슈로 사용불가 (너무 오래되서 설치불가) 
+
+3. 방식
+ -> SQL Server는 공식으로 데이터베이스 버전 업그레이드 지원방식을 지원하나
+    2008R2 -> 2022 한번에 업그레이드는 불가능, ( ex)2008R2 -> 2016 -> 2022 가능 )
+	OS 변경 이슈도 있기 때문에 데이터베이스 Full Backup / Restore 방식으로 진행 예정
+ 
+ -> 단순히 버전업으로 인한 동일한 호스트 내에서 작업시 attach/detach로 빠르게 작업이 가능할것
+    but, 해당 작업도 안전성과 데이터 무결성을 위해 풀백업이 필요한 부분이고 신규 호스트로의 이관,
+	파일전송 부분에 있어서 mdf/ldf 직접 전송보단 압축되어 있는 백업파일 전송이 데이터 유실 위험성이 적을것으로 판단
+
+
+ 
+4. 호환성 수준
+ -> 2008R2 버전의 호환성 수준은 80-100 사용가능
+    2022의 호환성 수준은 100-160 
+	구DWDB호스트 확인해보니 데이터베이스들 호환성 수준 100 사용 확인
+	-> 호환성 수준에서는 문제될 부분x,
+	if) 100 미만의 호환성 수준을 사용중이 였다면
+		-> 사전에 호환성 수준을 미리 올려서 DB에 접근중인 서비스 문제없는지 체크
+		-> 문제 발생시 호환성 수준 100에 맞게끔 수정 요청
+	-> 향후 동일한 작업 발생시 호환성 수준에서 이슈될수 있으니 호환성 수준 높이는 것으로 고려 필요
+	-> 
+	
+	
+ -> DBDW01 호스트 호환성 수준
+  SELECT table_name = convert(varchar(30), min(o.name)) 
+       , table_size = convert(int, ltrim(str(sum(reserved) * 8.192 / 1024., 15, 0)))
+       , UNIT = 'MB'
+  FROM sysindexes i 
+  INNER JOIN sysobjects o ON (o.id = i.id) 
+  WHERE i.indid in (0, 1, 255) 
+  AND o.xtype = 'U' 
+  GROUP BY i.id 
+  ORDER BY 2 desc
+
+  name		compatibility_level
+  master	100
+  tempdb	100
+  model		100
+  msdb	    100
+  DSS_DM	100
+  WorkDB	100
+  ZDBMNGR	100
+  
+5. 백업 용량
+  	SELECT 
+  	    d.name AS DatabaseName,
+  	    m.name AS LogicalName,
+  	    m.size * 8 / 1024 AS SizeMB,
+  	    m.size * 8.0 / 1024 / 1024 AS SizeGB 
+  	FROM 
+  	    sys.master_files m
+  	JOIN 
+  	    sys.databases d ON m.database_id = d.database_id
+  	ORDER BY 
+  	    d.name;
+  
+  DatabaseName		LogicalName		SizeMB		SizeGB
+  DSS_DM			DSS_DM			28136		27.47747802734
+  DSS_DM			DSS_DM_log		13032		12.72741699218
+  WorkDB			WorkDB			10000		9.76562500000
+  WorkDB			WorkDB_log		1000		0.97656250000
+  ZDBMNGR			ZDBMNGR_Dat		512			0.50000000000
+  ZDBMNGR			ZDBMNGR_Log		1024		1.00000000000
+  ZDBMNGR			ZDBMNGR_Dat1	19456		19.00000000000
+  ZDBMNGR			ZDBMNGR_Idx1	5120		5.00000000000
+  ZDBMNGR			ZDBMNGR_Lob1	5120		5.00000000000
+  
+--> 총 사용자 데이터베이스 용량 83.4Gb  
+
+
+6. 데이터 경로 확인
+--mdf, ldf 디렉토리 위치
+--Database Name	File Type	Logical Name	Physical Name							Size		Max Size
+--DSS_DM		MDF			DSS_DM			D:\DATA\USR\DATA\DSS_DM.mdf				27.48GB		무제한
+--DSS_DM		LDF			DSS_DM_log		F:\LOG\USR\DSS_DM_log.ldf				12.73GB		2048.00GB
+--WorkDB		MDF			WorkDB			D:\DATA\USR\DATA\WorkDB.mdf				9.77GB		무제한
+--WorkDB		LDF			WorkDB_log		F:\LOG\USR\WorkDB_log.ldf				1000.00MB	2048.00GB
+--ZDBMNGR		MDF			ZDBMNGR_Dat		D:\DATA\USR\META\ZDBMNGR_Dat.mdf		512.00MB	무제한
+--ZDBMNGR		LDF			ZDBMNGR_Log		F:\LOG\USR\ZDBMNGR_Log.ldf				1024.00MB	2048.00GB
+--ZDBMNGR		MDF			ZDBMNGR_Dat1	D:\DATA\USR\DATA\ZDBMNGR_Dat1.ndf		19.00GB		무제한
+--ZDBMNGR		MDF			ZDBMNGR_Idx1	D:\DATA\USR\IDX\ZDBMNGR_Idx1.ndf		5.00GB		무제한
+--ZDBMNGR		MDF			ZDBMNGR_Lob1	D:\DATA\USR\IDX\ZDBMNGR_Lob1.ndf		5.00GB		무제한
+
+7. 백업 기록 확인
+--backup_start_date			backup_finish_date			database_name	backup_size_mb		compressed_backup_size_mb	compression_ratio
+--2024-10-20 21:03:20.000	2024-10-20 21:04:30.000		ZDBMNGR			19139.08300781250	1664.22464561425			91.30
+--2024-10-20 21:01:57.000	2024-10-20 21:02:52.000		WorkDB			9446.07910156250	3582.11997985839			62.08
+--2024-10-20 21:00:03.000	2024-10-20 21:01:31.000		DSS_DM			12916.21875000000	3530.08256244628			72.67
+--2024-10-20 21:00:01.000	2024-10-20 21:00:03.000		msdb			144.14453125000		20.97454357128				85.45
+--2024-10-20 21:00:01.000	2024-10-20 21:00:01.000		master			3.32617187500		0.56523323046				83.01
+--2024-10-20 21:00:01.000	2024-10-20 21:00:01.000		model			1.63671875000		0.14112091015				91.38
+  
+8. 계정
+  -> account_mig.sql 참조
+  
+9. 에이전트 스케쥴링 & 잡
+  -> Agent_Job_Mig.sql 참조
+  -> 스크립트 생성을 통하여 이전작업 성공, DB내에 존재하지 않는 데이터베이스를 사용하는 sp가 있는 잡들은 생성X
+  -> full/increment Backup은 기존 호스트와 동일하게 유지관리 계획을 사용하여 스케쥴링
+  
+10. 링크드 서버
+  -> 사전 작업을 하면서 DSS_SyncDailyStat 지속적인 잡 실패 확인
+     확인 결과, 담당PM분께서 어느날부터 데이터가 정상적으로 쌓이지 않았고,
+	 데이터베이스는 필요한 부분이기에, 웹서버를 통하여 데이터를 수작업으로 Insert중인것을 확인
+	 (오래돼서 정확한 날짜 확인 불가)
+  -> 사용중인 테이블과 해당 잡에서 사용중인 SP를 확인결과 링크드 서버를 사용하여 다른 데이터베이스로부터 
+     데이터 수집중인것을 확인하였으나 링크드서버가 끊겨있어서 잡이 실패나는것을 확인
+  -> FS2GSP, FSFZINQR 담당자 분들께 요청하여 링크드 서버가 사용중인 계정 중지된것 확인하고 Enable 요청 
+     FSFZINQR -> 방화벽 정책 추가  
+     위 2개의 링크드 서버 연결성공
+  -> 신규 DWDB 호스트 동일하게 링크드 서버 생성 후 테스트 해봤으나 접속실패
+     -> 방화벽 확인 필요  
+   
+  * DSS_SyncDailyStat잡 Disable 상태, 
+    잡에서 사용중인 SP확인해보니 연결된서버 사용하는 부분 성공적으로 작동 확인
+    긴 기간동안 실패한 잡이고, 기존에 수기로 넣던 부분과 데이터 충돌시 어떤 현상 발생할지 모르기 때문에,
+	이관 성공 후, 동일한 구조의 테이블 생성하여 테스트 진행 후, 담당자 분이랑 확인 예정
+   
+   
+
+11. 네트워크 설정
+  -> 기존 호스트와 동일한 port 설정 
+  -> 구성관리자 프로토콜, 별칭 생성불가 -> 이관 후 테스트 필요
+
+  
+   **E:\DATA\USR\DATA\KOR_rts_log (1.12Tb) 해당파일 확인필요
+     -> 호스트 제거하면서 같이 제거될 예정, 9년이 넘음 
+	 
+12. 사용중인 서비스들
+  -> 설치시 최대한 동일하게 설치 구성하여 실행  
+  
+--------------------마이그레이션 쿼리 ------------------------------------ 
+  
+
+ALTER DATABASE DSS_DM SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+ALTER DATABASE WorkDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+ALTER DATABASE ZDBMNGR SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+-> 싱글모드 전환하여 데이터베이스에 들어오는 쿼리 차단
+-> 사전 백업 테스트시에는 싱글모드 전환x
+
+--DSS_DM 풀백업
+BACKUP DATABASE DSS_DM
+TO DISK = N'E:\Bkup_migration\DSS_DM_FullBackup.bak'
+WITH NOFORMAT,
+     NOINIT,
+     NAME = N'DSS_DM_DATABASE_FULL_BACKUP',
+     NOSKIP,
+     NOREWIND,
+     NOUNLOAD,
+	 CHECKSUM,
+	 COMPRESSION,
+     STATS = 10;
+
+
+--WorkDB 풀백업
+BACKUP DATABASE WorkDB
+TO DISK = N'E:\Bkup_migration\WorkDB_FullBackup.bak'
+WITH NOFORMAT,
+     NOINIT,
+     NAME = N'WorkDB_DATABASE_FULL_BACKUP',
+     NOSKIP,
+     NOREWIND,
+     NOUNLOAD,
+	 CHECKSUM,
+	 COMPRESSION,
+     STATS = 10;
+	 
+	 
+--ZDBMNGR 풀백업
+BACKUP DATABASE ZDBMNGR
+TO DISK = N'E:\Bkup_migration\ZDBMNGR_FullBackup.bak'
+WITH NOFORMAT,
+     NOINIT,
+     NAME = N'ZDBMNGR_DATABASE_FULL_BACKUP',
+     NOSKIP,
+     NOREWIND,
+     NOUNLOAD,
+	 CHECKSUM,
+	 COMPRESSION,
+     STATS = 10;
+
+
+ALTER DATABASE DSS_DM SET MULTI_USER
+ALTER DATABASE WorkDB SET MULTI_USER
+ALTER DATABASE ZDBMNGR SET MULTI_USER
+
+-- 데이터베이스 access 상태 확인
+select name, user_access_desc from sys.databases 
+where name in ('DSS_DM','WorkDB','ZDBMNGR')
+
+
+-------------------------------------------------------------
+--DSS_DM Restore
+restore database DSS_DM
+from disk = 'G:\Bkup_migration\DSS_DM_FullBackup.bak'
+with 
+move 'DSS_DM' 		to 'D:\DATA\USR\DATA\DSS_DM.mdf',
+move 'DSS_DM_log' 	to 'E:\LOG\USR\DSS_DM_log.ldf',
+recovery
+
+
+--WorkDB Restore
+restore database WorkDB
+from disk = 'G:\Bkup_migration\WorkDB_FullBackup.bak'
+with 
+move 'WorkDB' 		to 'D:\DATA\USR\DATA\WorkDB.mdf',
+move 'WorkDB_log' 	to 'E:\LOG\USR\WorkDB_log.ldf',
+recovery
+  
+
+--ZDBMNGR Restore  
+restore database ZDBMNGR
+from disk = 'G:\Bkup_migration\ZDBMNGR_FullBackup.bak'
+with 
+move 'ZDBMNGR_Dat'	to 'D:\DATA\USR\DATA\ZDBMNGR_Dat.mdf',
+move 'ZDBMNGR_Dat1' to 'D:\DATA\USR\DATA\ZDBMNGR_Dat1.ndf',
+move 'ZDBMNGR_Idx1' to 'D:\DATA\USR\DATA\ZDBMNGR_Idx1.ndf',
+move 'ZDBMNGR_Lob1' to 'D:\DATA\USR\DATA\ZDBMNGR_Lob1.ndf',
+move 'ZDBMNGR_Log'	to 'E:\LOG\USR\ZDBMNGR_Log.ldf',
+recovery
+  
+
+사전 백업&복구 테스트 결과
+DATABASE_NAME	Backup_time		원본용량/압축백업용량 (원본 = mdf+ldf)	Restore_Time / M:S
+DSS_DM 			69.704초  		약40Gb/ 3.44Gb							1671.704S    / 28:29			
+WorkDB	 		55.73초			약11Gb/ 3.49Gb							603.245s     / 10:13
+ZDBMNGR			66.557초		약32Gb/ 1.62Gb							1424.784     / 23:59
+
+--> 백업파일 3개 전송시간 약 3분
+
+==================================================================================================================
+
+마이그레이션 작업일지
+
+작업 전 
+
+DROP DATABASE DSS_DM
+DROP DATABASE WorkDB
+DROP DATABASE ZDBMNGR
+-> 테스트로 복구해놓은 데이터베이스 제거
+
+10/29 오후2시 작업시작
+구DWDB 호스트 데이터베이스 싱글모드 전환하여 쿼리 차단
+ALTER DATABASE DSS_DM SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+ALTER DATABASE WorkDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+ALTER DATABASE ZDBMNGR SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+-> 백업 및 복구 쿼리 위 테스트에서 사용한 쿼리와 동일하게 작업
+
+ALTER DATABASE DSS_DM SET MULTI_USER
+ALTER DATABASE WorkDB SET MULTI_USER
+ALTER DATABASE ZDBMNGR SET MULTI_USER
+-> 싱글유저모드 상태에서 백업되었기에 복구 완료 후 멀티유저모드로 전환
+ 
+ 백업&복구 시간
+ DATABASE_NAME	Backup_time	원본용량/압축백업용량 (원본 = mdf+ldf)	Restore_Time 
+ DSS_DM 		70.087초	약40Gb/ 3.44Gb							1016.510초
+ WorkDB			72.621초	약11Gb/ 3.49Gb							456.033초
+ ZDBMNGR		67.187초	약32Gb/ 1.63Gb							1862.511초
+ 
+--> 백업/복구 위 테스트에서 사용한 쿼리 동일하게 사용 
+--> 백업/복구 시간 위 표 참조
+--> 3개 백업 파일 전송 약 3분 
+
+-> 사내 인프라파트 강대원님 ip 스위칭 작업
+
+sqlserver 구성 관리자 - SQL Server 네트워크 구성 - 프로토콜 - TCP/IP - ip 변경 - 재시작
+-> ip스위칭 이전에 미리 신규DB를 구축해논 상태이기에 변경된 ip로 변경
+
+서비스 접속 확인
+-> 기존에 접근중이던 웹서버 커넥션 확인 및 
+   더미 데이터 인서트 후 확인요청
+   -> 정상 확인
+   
+백업
+-> 기존 호스트에서 유지관리계획을 사용하여 풀/차등 백업 사용중이었음
+   동일하게 유지관리계획 사용하여 백업 구성
+-> 디스크 용량이 기존 호스트보다 많지 않기 때문에 압축백업으로 변경
+
+링크드 서버
+-> 기존 호스트(SQL Server 2008R2)에선 공급자 - SQL Server NativeClient10.0(이하 SQLNCLI10)을 사용하여 링크드 서버를 구성
+-> 신규 호스트(SQL Server 2022)에선 SQLNCLI10,11 기본제공을 하고 있지 않아서 링크드 서버 연결이 불가능 했었음 (설치시 제공 x)
+-> 기존 호스트에서 사용중이던 SQLNCLI10 호환성 이슈로 설치불가
+   SQL Server Native Client11.0(이하 SQLNCLI11)은 아직 지원을 하고 있어서 추가 설치하는것으로 사용 가능*
+-> featurepack에서 sqlncli.msi 다운로드 후 설치 **
+-> SSMS 재시작 후 SQLNCLI11 설치 확인 후, SQLNCLI11을 사용하여 링크드 서버 연결 성공.
+   
+*https://learn.microsoft.com/ko-kr/sql/relational-databases/native-client/applications/installing-sql-server-native-client?view=sql-server-ver15
+**https://www.microsoft.com/ko-kr/download/details.aspx?id=56041
+
+잡
+-> 기존 Job에서 사용중인 테이블들과 동일한 구조에 테이블과 Job 생성 후 스케쥴링, 이후 데이터 정상적인지 확인 (프리스타일 사업본부 PM팀 허준호님) 
+-> 기존 테이블에 바로 연결 안하는 이유는 오랫동안 끊겨있던 잡이고, 해당 데이터 수집건에 대한 히스토리 알지못하기에 데이터 오염 방지를 위하여 테스트후 활성화
+
+모니터링 -> 기존 호스트에서 사용중이던 telegraf 및 config 파일 사용
+		-> DB계정 이관 정상적으로 되었기에 기존 모니터링 계정 사용가능하였음
+		-> Prometheus/Grafana 정상 작동 확인
+		-> WindowServer/SqlServer 모니터링 프로그램은 차후 최신버전으로 업데이트 예정
+		
