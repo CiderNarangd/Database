@@ -1,0 +1,158 @@
+Oracle19C Install
+
+OEL8.10 기준
+
+//설치파일 & Sample Schema복사
+su - root
+cd /media/sf_Shared/Oracle19c
+
+cp Oracle19C_Engine.zip /storage/downloads
+cp db-sample-schemas-19.2.zip /storage/downloads
+*오라클 계정 생성후 권한변경
+
+
+//Preinstall 설치
+dnf install -y oracle-database-preinstall-19c
+
+
+// 커널 파라미터 확인
+cat /etc/sysctl.conf
+sysctl -p
+
+//limit conf 확인
+vi /etc/security/limits.d/oracle-database-preinstall-19c.conf
+
+
+//계정 및 그룹 확인
+
+--그룹 확인
+cat /etc/group | grep dba
+cat /etc/group | grep oinstall
+
+--계정확인
+cat /etc/passwd | grep oracle
+
+--oracle 계정 pw변경
+passwd oracle  oracle//oracle
+
+su - oracle
+
+
+//디렉토리 생성
+
+mkdir -p /u01/app/oracle/product/19.3.0/dbhome_1
+mkdir -p /u01/app/oraInventory
+mkdir -p /u02/oradata
+
+chmod -R 775 /u01
+chmod -R 775 /u02
+
+chown -R oracle:oinstall /u01
+chown -R oracle:oinstall /u02
+
+//환경 변수 셋팅
+
+su - oracle
+
+vi .bash_profile
+====================================================
+
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/dbhome_1
+export ORACLE_SID=ORCL  
+export PATH=$PATH:$ORACLE_HOME/bin
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/lib:/usr/lib
+export CLASSPATH=$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export NLS_DATE_FORMAT="YYYY-MM-DD HH24:MI:SS"
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+export DATA_DIR=/u02/oradata
+
+export TNS_ADMIN=$ORACLE_HOME/network/admin   
+export TEMP=/tmp
+export TMPDIR=/tmp
+
+===================================================
+source .bash_profile
+
+vi .bashrc
+=================================================
+
+alias qq='sqlplus / as sysdba'
+alias ww='sqlplus / as sysasm'
+##alias rlsp='rlwrap sqlplus / as sysdba'  
+
+alias alert='tail -f $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace/alert_ORCL.log'
+alias alertlog='vi $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace/alert_ORCL.log'
+
+alias cdoh='cd $ORACLE_HOME'
+alias cdob='cd $ORACLE_BASE'
+alias cdtrace='cd $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace'
+alias cddata='cd $DATA_DIR'
+alias cdnet='cd $ORACLE_HOME/network/admin'
+alias cdadump='cd $ORACLE_BASE/admin/ORCL/adump'
+
+==============================================
+source .bashrc
+
+
+//압축해제
+*권한변경 필요시 변경
+chown -R oracle:oinstall /storage/downloads/db-sample-schemas-19.2.zip
+chown -R oracle:oinstall /storage/downloads/Oracle19C_Engine.zip
+chmod 775 /storage/downloads/db-sample-schemas-19.2.zip
+chmod 775 /storage/downloads/Oracle19C_Engine.zip
+
+cd /storage/downloads
+unzip Oracle19C_Engine.zip -d /u01/app/oracle/product/19.3.0/dbhome_1/
+
+
+//인스톨러 실행
+
+export CV_ASSUME_DISTID=OEL8
+echo CV_ASSUME_DISTID
+
+cd $ORACLE_HOME
+Silent Install 시작
+
+db_install19c.rsp 파일 참조
+
+grep -v "^#" $ORACLE_HOME/install/response/db_install.rsp | grep -v "^$"
+
+./runInstaller -silent -responseFile /u01/app/oracle/product/19.3.0/dbhome_1/install/response/db_install.rsp
+
+//root script 실행
+As a root user, execute the following script(s):
+        1. /u01/app/oraInventory/orainstRoot.sh
+        2. /u01/app/oracle/product/19.3.0/dbhome_1/root.sh
+
+su - root 
+/u01/app/oraInventory/orainstRoot.sh
+/u01/app/oracle/product/19.3.0/dbhome_1/root.sh
+
+//rlwrap 설치
+yum install -y epel-release
+yum install -y rlwrap
+
+vi $ORACLE_HOME/sqlplus/admin/glogin.sql
+===================
+
+-- 프롬프트 설정
+SET SQLPROMPT "_USER'@'_CONNECT_IDENTIFIER > "
+
+-- 출력 포맷
+SET LINESIZE 200
+SET PAGESIZE 50
+SET TIMING ON          -- 쿼리 실행시간 표시
+SET TIME ON            -- 현재시간 표시
+SET TRIMSPOOL ON
+SET SERVEROUTPUT ON    -- DBMS_OUTPUT 자동 ON
+
+-- 컬럼 출력 포맷
+SET NUMFORMAT 999,999,999,999
+SET NULL '[NULL]'      -- NULL값 표시
+
+===============================================
+
+
+Finish
+
