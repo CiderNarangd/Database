@@ -114,7 +114,7 @@ echo CV_ASSUME_DISTID
 cd $ORACLE_HOME
 Silent Install 시작
 
-db_install19c.rsp 파일 참조
+1_1.19c_singleinstall_rsp.txt 파일 참조
 
 grep -v "^#" $ORACLE_HOME/install/response/db_install.rsp | grep -v "^$"
 
