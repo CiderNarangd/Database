@@ -8,7 +8,6 @@ Network
 어댑터2 -> NAT / 외부망
 
 무인설치 건너뛰기
-efi 활성화
 
 Processor - 8 
 Mem 8Gb
@@ -30,15 +29,14 @@ SoftWare Selection
 ->Server With GUI
  - Development Tools
  - System Tools
-
+ - Legacy UNIX Compatibility
 
 SYSTEM
 Installation Destination
 
 Storage config  / Custom
-/tmp  -> ext4 / 2Gb
-/boot -> ext4 / 1Gb
-/boot/efi -> EFI System Partition / 200Mb
+/tmp  -> xfs / 2Gb
+/boot -> xfs / 1Gb
 swap  -> 10Gb
 /	 -> xfs
 
