@@ -91,3 +91,8 @@ systemctl stop firewalld
 //SELinux 해체
 vi /etc/selinux/config
 selinux=disabled
+
+Reboot
+[root@oracle19c-m ~]# sestatus
+
+
