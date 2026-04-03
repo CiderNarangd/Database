@@ -1,0 +1,65 @@
+OS - Oralce Linux 9.4
+2core 4gb ram
+
+
+
+시스템 업데이트
+dnf update -y
+
+dnf groupinstall -y "Development Tools"
+dnf install -y \
+    readline-devel \
+    zlib-devel \
+    libxml2-devel \
+    libxslt-devel \
+    openssl-devel \
+    systemd-devel \
+    perl-ExtUtils-Embed \
+    python3-devel \
+    tcl-devel \
+    openldap-devel \
+    pam-devel \
+    libicu-devel \
+    llvm-devel \
+    clang
+
+yum install -y perl-FindBin
+
+소스 다운로드
+cd /storage/download
+wget https://ftp.postgresql.org/pub/source/v17.7/postgresql-17.7.tar.gz
+tar -xvf  postgresql-17.7.tar.gz
+
+
+pgsql 계정 생성
+useradd -m -d /home/postgres -s /bin/bash postgres
+
+
+//pgsql 데이터, 로그 디렉토리 생성
+mkdir -p /usr/local/pgsql17
+mkdir /pgdata
+mkdir /pglog
+
+// 디렉토리 권한 변경
+chown -R postgres:postgres /usr/local/pgsql17
+chown -R postgres:postgres /pgdata
+chown -R postgres:postgres /pglog
+
+//컴파일 및 설치
+
+cd /storage/download/postgresql-17.7
+./configure --prefix=/usr/local/pgsql17
+make -j$(nproc)
+make install
+
+
+//사용자 전환후 db초기화
+su - postgres
+cd /usr/local/pgsql17/bin/
+./initdb -D /pgdata
+
+//db서버시작
+su postgres
+/usr/local/pgsql17/bin/pg_ctl -D /pgdata -l logfile start
+
+//환경변수 등록

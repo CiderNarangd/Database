@@ -1,0 +1,112 @@
+계정생성
+cnf 설정
+리프리케이션
+모니터링
+백업&복구 스크립트.
+
+show databases;
+\l
+\list
+SELECT datname FROM pg_database;
+
+
+show tables;
+\dt
+\dt public.*
+
+\c mydb
+\dt
+
+desc table;
+\d table
+\d+ table
+
+//계정 생성
+CREATE USER dba_user
+WITH
+    SUPERUSER
+    CREATEDB
+    CREATEROLE
+    REPLICATION
+    PASSWORD 'kinam123!@#';
+
+
+CREATE USER app_user
+WITH
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE
+    PASSWORD 'kinam123!@#';
+
+CREATE USER prometheus
+WITH
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE
+    PASSWORD 'kinam123!@#';
+
+CREATE USER repl_user
+WITH
+    REPLICATION
+    LOGIN
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE 
+    PASSWORD 'kinam123!@#';
+
+
+// 데이터베이스 생성
+
+CREATE DATABASE userdb
+    OWNER dba_user
+    ENCODING 'UTF8'
+    LC_COLLATE 'C'
+    LC_CTYPE 'C'
+    TEMPLATE template0;
+
+CREATE TABLE users (
+    user_id     BIGSERIAL PRIMARY KEY,
+    username    VARCHAR(50) NOT NULL UNIQUE,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    created_at  TIMESTAMP NOT NULL DEFAULT now()
+);
+
+
+
+
+//권한 부여
+
+ALTER SCHEMA public OWNER TO dba_user;
+
+GRANT CONNECT ON DATABASE userdb TO app_user;
+GRANT USAGE, CREATE ON SCHEMA public TO app_user;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA public
+TO app_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON TABLES TO app_user;
+
+GRANT USAGE, SELECT
+ON ALL SEQUENCES IN SCHEMA public
+TO app_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT USAGE, SELECT
+ON SEQUENCES TO app_user;
+
+GRANT pg_monitor TO prometheus;
+GRANT CONNECT ON DATABASE userdb TO prometheus;
+
+
+
+
+
+
+설정파일 수정 및 리플리케이션
+
+
+
+

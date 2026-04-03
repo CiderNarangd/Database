@@ -83,6 +83,14 @@ reboot
 mkdir -p /storage/downloads
 chmod -R 777 /storage
 
+마운트 지점 : /media/shared
+chmod -R 777 /media/shared 
+
+usermod -aG vboxsf kinam
+usermod -aG vboxsf root
+
+--> 계정 추가될때마다 그룹추가
+
 
 //방화벽 해제
 systemctl disable firewalld
