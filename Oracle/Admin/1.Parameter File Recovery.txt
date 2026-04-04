@@ -1,0 +1,31 @@
+Oracle Parameter file 복구
+
+1. RMAN or user-managed 백업본 확인
+	1-1.user-managed 백업(cp)
+		parameter 파일까지 백업중일시 해당파일 복사해서 사용
+	
+	1-2. RMAN 백업중일시
+		RMAN> restore spfile from autobackup;
+		RMAN> restore spfile from '/backupdir/backup_file_name';
+	
+	
+2. DB 가동중 / prilfe / spfile 둘다 없을시
+	CREATE PFILE='/dir/init<instance_name>.ora' FROM MEMORY;
+	CREATE PFILE='/dir/initORCL.ora' FROM MEMORY;
+	
+	
+3. 백업X / DB내려간 상태
+$ORACLE_BASE/diag/rdbms/<db_unique_name>/<instance_name>/trace
+$ORACLE_BASE/diag/rdbms/orcl/ORCL/trace
+
+alert_ORCL.log 
+alert 로그 참조하여 생성
+vi 명령어모드에서 /spfile 검색
+
+
+vi init<instance_name>.ora
+vi initORCL.ora
+
+내용 입력후 해당 파일로 nomount 
+
+

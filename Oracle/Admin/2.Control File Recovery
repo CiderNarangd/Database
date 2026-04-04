@@ -1,0 +1,184 @@
+Controlfile 복구
+
+1. 멀티플렉싱
+ -> alert로그 or startup시 문제되는 컨트롤 파일 확인
+ -> 문제되는 파일을 정상적인 컨트롤파일로 덮어쓰기
+ 
+2. RMAN or UserManager Backup
+ -> 백업본 존재할시 
+ 
+RMAN> ALTER DATABASE MOUNT;
+RMAN> RECOVER DATABASE; -- 컨트롤 파일이 복구되었으므로 데이터파일과 동기화 필요
+RMAN> ALTER DATABASE OPEN RESETLOGS; -- 컨트롤 파일을 새로 살렸으므로 로그 재설정 필수
+
+
+3.컨트롤 파일 모두 유실 -> 백업본x / 멀티플렉싱x
+
+mount 이상단계에서 아래 명령어 실행 가능
+alter database backup controlfile to trace as '/dir/crecon.sql'
+alter database backup controlfile to trace as '/home/oracle/crecon.sql';
+
+trace 형식의 백업 미리 받아놓기.
+ ->  ** 만들어놓은 trace 파일조차 없으면 수동으로 작성하자  **
+
+-- Binary 형식으로도 백업가능
+alter database backup controlfile to '/dir/con.ctl' ;
+
+
+Resetlog 와 noresetlogs 두가지 형식의 템플릿 존재 상황에 맞게 사용
+
+**Resetlog 옵션시 반드시
+ALTER DATABASE OPEN RESETLOGS 
+open시 resetlogs 사용
+
+
+
+vi crecon.sql
+==============================================
+
+-- The following are current System-scope REDO Log Archival related
+-- parameters and can be included in the database initialization file.
+--
+-- LOG_ARCHIVE_DEST=''
+-- LOG_ARCHIVE_DUPLEX_DEST=''
+--
+-- LOG_ARCHIVE_FORMAT=%t_%s_%r.dbf
+--
+-- DB_UNIQUE_NAME="ORCL"
+--
+-- LOG_ARCHIVE_CONFIG='SEND, RECEIVE, NODG_CONFIG'
+-- LOG_ARCHIVE_MAX_PROCESSES=4
+-- STANDBY_FILE_MANAGEMENT=MANUAL
+-- FAL_CLIENT=''
+-- FAL_SERVER=''
+--
+-- LOG_ARCHIVE_DEST_1='LOCATION=USE_DB_RECOVERY_FILE_DEST'
+-- LOG_ARCHIVE_DEST_1='MANDATORY REOPEN=300 NODELAY'
+-- LOG_ARCHIVE_DEST_1='ARCH NOAFFIRM NOVERIFY SYNC'
+-- LOG_ARCHIVE_DEST_1='NOREGISTER'
+-- LOG_ARCHIVE_DEST_1='NOALTERNATE'
+-- LOG_ARCHIVE_DEST_1='NODEPENDENCY'
+-- LOG_ARCHIVE_DEST_1='NOMAX_FAILURE NOQUOTA_SIZE NOQUOTA_USED NODB_UNIQUE_NAME'
+-- LOG_ARCHIVE_DEST_1='VALID_FOR=(PRIMARY_ROLE,ONLINE_LOGFILES)'
+-- LOG_ARCHIVE_DEST_STATE_1=ENABLE
+
+--
+-- Below are two sets of SQL statements, each of which creates a new
+-- control file and uses it to open the database. The first set opens
+-- the database with the NORESETLOGS option and should be used only if
+-- the current versions of all online logs are available. The second
+-- set opens the database with the RESETLOGS option and should be used
+-- if online logs are unavailable.
+-- The appropriate set of statements can be copied from the trace into
+-- a script file, edited as necessary, and executed when there is a
+-- need to re-create the control file.
+--
+--     Set #1. NORESETLOGS case
+--
+-- The following commands will create a new control file and use it
+-- to open the database.
+-- Data used by Recovery Manager will be lost.
+-- Additional logs may be required for media recovery of offline
+-- Use this only if the current versions of all online logs are
+-- available.
+
+-- After mounting the created controlfile, the following SQL
+-- statement will place the database in the appropriate
+-- protection mode:
+--  ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE PERFORMANCE
+
+STARTUP NOMOUNT
+CREATE CONTROLFILE REUSE DATABASE "ORCL" NORESETLOGS  NOARCHIVELOG
+    MAXLOGFILES 16
+    MAXLOGMEMBERS 3
+    MAXDATAFILES 100
+    MAXINSTANCES 8
+    MAXLOGHISTORY 292
+LOGFILE
+  GROUP 1 '/u02/oradata/ORCL/redo01.log'  SIZE 100M BLOCKSIZE 512,
+  GROUP 2 '/u02/oradata/ORCL/redo02.log'  SIZE 100M BLOCKSIZE 512,
+  GROUP 3 '/u02/oradata/ORCL/redo03.log'  SIZE 100M BLOCKSIZE 512
+-- STANDBY LOGFILE
+DATAFILE
+  '/u02/oradata/ORCL/system01.dbf',
+  '/u02/oradata/ORCL/sysaux01.dbf',
+  '/u02/oradata/ORCL/undotbs01.dbf',
+  '/u02/oradata/ORCL/users01.dbf'
+CHARACTER SET AL32UTF8
+;
+
+-- Commands to re-create incarnation table
+-- Below log names MUST be changed to existing filenames on
+-- disk. Any one log file from each branch can be used to
+-- re-create incarnation records.
+-- ALTER DATABASE REGISTER LOGFILE '/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05/o1_mf_1_1_%u_.arc';
+-- ALTER DATABASE REGISTER LOGFILE '/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05/o1_mf_1_1_%u_.arc';
+-- Recovery is required if any of the datafiles are restored backups,
+-- or if the last shutdown was not normal or immediate.
+RECOVER DATABASE
+
+-- Database can now be opened normally.
+ALTER DATABASE OPEN;
+
+-- Commands to add tempfiles to temporary tablespaces.
+-- Online tempfiles have complete space information.
+-- Other tempfiles may require adjustment.
+ALTER TABLESPACE TEMP ADD TEMPFILE '/u02/oradata/ORCL/temp01.dbf'
+     SIZE 33554432  REUSE AUTOEXTEND ON NEXT 655360  MAXSIZE 32767M;
+-- End of tempfile additions.
+--
+--     Set #2. RESETLOGS case
+--
+-- The following commands will create a new control file and use it
+-- to open the database.
+-- Data used by Recovery Manager will be lost.
+-- The contents of online logs will be lost and all backups will
+-- be invalidated. Use this only if online logs are damaged.
+
+-- After mounting the created controlfile, the following SQL
+-- statement will place the database in the appropriate
+-- protection mode:
+--  ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE PERFORMANCE
+
+STARTUP NOMOUNT
+CREATE CONTROLFILE REUSE DATABASE "ORCL" RESETLOGS  NOARCHIVELOG
+    MAXLOGFILES 16
+    MAXLOGMEMBERS 3
+    MAXDATAFILES 100
+    MAXINSTANCES 8
+    MAXLOGHISTORY 292
+LOGFILE
+  GROUP 1 '/u02/oradata/ORCL/redo01.log'  SIZE 100M BLOCKSIZE 512,
+  GROUP 2 '/u02/oradata/ORCL/redo02.log'  SIZE 100M BLOCKSIZE 512,
+  GROUP 3 '/u02/oradata/ORCL/redo03.log'  SIZE 100M BLOCKSIZE 512
+-- STANDBY LOGFILE
+DATAFILE
+  '/u02/oradata/ORCL/system01.dbf',
+  '/u02/oradata/ORCL/sysaux01.dbf',
+  '/u02/oradata/ORCL/undotbs01.dbf',
+  '/u02/oradata/ORCL/users01.dbf'
+CHARACTER SET AL32UTF8
+;
+
+-- Commands to re-create incarnation table
+-- Below log names MUST be changed to existing filenames on
+-- disk. Any one log file from each branch can be used to
+-- re-create incarnation records.
+-- ALTER DATABASE REGISTER LOGFILE '/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05/o1_mf_1_1_%u_.arc';
+-- ALTER DATABASE REGISTER LOGFILE '/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05/o1_mf_1_1_%u_.arc';
+-- Recovery is required if any of the datafiles are restored backups,
+-- or if the last shutdown was not normal or immediate.
+RECOVER DATABASE USING BACKUP CONTROLFILE
+
+-- Database can now be opened zeroing the online logs.
+ALTER DATABASE OPEN RESETLOGS;
+
+-- Commands to add tempfiles to temporary tablespaces.
+-- Online tempfiles have complete space information.
+-- Other tempfiles may require adjustment.
+ALTER TABLESPACE TEMP ADD TEMPFILE '/u02/oradata/ORCL/temp01.dbf'
+     SIZE 33554432  REUSE AUTOEXTEND ON NEXT 655360  MAXSIZE 32767M;
+-- End of tempfile additions.
+--
+
+=========================================================

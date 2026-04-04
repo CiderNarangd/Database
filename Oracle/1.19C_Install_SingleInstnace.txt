@@ -8,12 +8,16 @@ cd /media/sf_Shared/Oracle19c
 
 cp Oracle19C_Engine.zip /storage/downloads
 cp db-sample-schemas-19.2.zip /storage/downloads
+cp oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm /storage/downloads
 *오라클 계정 생성후 권한변경
 
 
 //Preinstall 설치
 dnf install -y oracle-database-preinstall-19c
-
+or 
+rpm -Uvh oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm
+or
+yum install -y oracle-database-preinstall-19cr
 
 // 커널 파라미터 확인
 cat /etc/sysctl.conf
@@ -50,6 +54,9 @@ chmod -R 775 /u02
 chown -R oracle:oinstall /u01
 chown -R oracle:oinstall /u02
 
+chown -R oracle:oinstall /storage/downloads/Oracle19C_Engine.zip
+chmod -R 775 /storage/downloads/Oracle19C_Engine.zip
+
 //환경 변수 셋팅
 
 su - oracle
@@ -77,20 +84,23 @@ source .bash_profile
 vi .bashrc
 =================================================
 
-alias qq='sqlplus / as sysdba'
-alias ww='sqlplus / as sysasm'
-##alias rlsp='rlwrap sqlplus / as sysdba'  
+alias qq='sqlplus / as sysdba'                                                                                     
+alias ww='sqlplus / as sysasm'                                                                                     
+ 
+alias qqq='rlwrap sqlplus / as sysdba'                                                                             
+alias www='rlwrap sqlplus / as sysasm'                                                                                                                                               
 
-alias alert='tail -f $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace/alert_ORCL.log'
-alias alertlog='vi $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace/alert_ORCL.log'
-
-alias cdoh='cd $ORACLE_HOME'
-alias cdob='cd $ORACLE_BASE'
-alias cdtrace='cd $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace'
-alias cddata='cd $DATA_DIR'
-alias cdnet='cd $ORACLE_HOME/network/admin'
-alias cdadump='cd $ORACLE_BASE/admin/ORCL/adump'
-
+alias alert='tail -f /u01/app/oracle/diag/rdbms/orcl/orcl/trace/alert_orcl.log'                                    
+alias alertmove='cd /u01/app/oracle/diag/rdbms/orcl/orcl/trace'                                                    
+alias data='cd /u02/oradata/orcl'                                                                                                                                                          
+alias tns='cd $ORACLE_HOME/network/admin'                                                                          
+alias dbs='cd $ORACLE_HOME/dbs'                                                                                    
+alias cdoh='cd $ORACLE_HOME'                                                                                       
+alias cdob='cd $ORACLE_BASE'                                                                                       
+alias cdtrace='cd $ORACLE_BASE/diag/rdbms/orcl/orcl/trace'                                                         
+alias cddata='cd $DATA_DIR'                                                                                        
+alias cdadump='cd $ORACLE_BASE/admin/ORCL/adump'                                                                   
+ 
 ==============================================
 source .bashrc
 
@@ -108,6 +118,7 @@ unzip Oracle19C_Engine.zip -d /u01/app/oracle/product/19.3.0/dbhome_1/
 
 //인스톨러 실행
 
+** 에러발생시 아래 커맨드 사용 (19c 초기버전이기에 oel8.8 이상 인식못함)
 export CV_ASSUME_DISTID=OEL8
 echo CV_ASSUME_DISTID
 
@@ -115,6 +126,8 @@ cd $ORACLE_HOME
 Silent Install 시작
 
 1_1.19c_singleinstall_rsp.txt 파일 참조
+
+** vi에디터에 복사시 #이 하나 더생겨서 전체 주석 걸릴때  명령모드에서 :set paste 입력후 붙여넣기
 
 grep -v "^#" $ORACLE_HOME/install/response/db_install.rsp | grep -v "^$"
 
@@ -132,6 +145,29 @@ su - root
 //rlwrap 설치
 yum install -y epel-release
 yum install -y rlwrap
+
+** oel 7에선
+[root@oracle19c-m2 ~]# cd /etc/yum.repos.d/
+vi oracle-developer-epel-ol7.repo
+
+========
+
+[ol7_developer_EPEL]
+name=Oracle Linux $releasever Development Packages ($basearch)
+baseurl=https://yum.oracle.com/repo/OracleLinux/OL7/developer_EPEL/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+===========
+
+yum repolist
+yum list rlwrap
+yum install rlwrap
+
+
+
+
 
 vi $ORACLE_HOME/sqlplus/admin/glogin.sql
 ===================

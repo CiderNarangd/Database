@@ -1,0 +1,73 @@
+================= Sample Schema Insert ==============
+unzip db-sample-schemas-19.2.zip
+cd db-sample-schemas-19.2/
+perl -p -i.bak -e 's#__SUB__CWD__#'$(pwd)'#g' *.sql */*.sql */*.dat
+
+mkdir -p /home/oracle/logs
+
+sqlplus system/oracle@ORCL
+@mksample.sql
+
+01:32:33 SYSTEM@ORCL > @mksample.sql
+
+specify password for SYSTEM as parameter 1:
+Enter value for 1: oracle
+
+specify password for SYS as parameter 2:
+Enter value for 2: oracle
+
+specify password for HR as parameter 3:
+Enter value for 3: hr
+
+specify password for OE as parameter 4:
+Enter value for 4: oe
+
+specify password for PM as parameter 5:
+Enter value for 5: pm
+
+specify password for IX as parameter 6:
+Enter value for 6: ix
+
+specify password for  SH as parameter 7:
+Enter value for 7: sh
+
+specify password for  BI as parameter 8:
+Enter value for 8: bi
+
+specify default tablespace as parameter 9:
+Enter value for 9: /u02/oradata/ORCL
+
+specify temporary tablespace as parameter 10:
+Enter value for 10: TEMP
+
+specify log file directory (including trailing delimiter) as parameter 11:
+Enter value for 11: /home/oracle/logs
+
+specify connect string as parameter 12:
+Enter value for 12: ORCL
+
+
+SELECT username, account_status FROM dba_users 
+WHERE username IN ('HR','OE','PM','IX','SH','BI')
+ORDER BY username;
+
+
+================= CO ( customer orders ) Sample Schema Insert ==============
+
+cd db-sample-schemas-19.2/customer_orders
+perl -p -i.bak -e 's#__SUB__CWD__#'$(pwd)'#g' *.sql */*.sql */*.dat
+
+
+sqlplus system/oracle@ORCL
+@co_main.sql
+
+define co_password = &1
+define connect_string = &2
+define tbs = &3
+define ttbs = &4
+
+co
+ORCL
+USERS
+TEMP
+
