@@ -17,7 +17,7 @@ dnf install -y oracle-database-preinstall-19c
 or 
 rpm -Uvh oracle-database-preinstall-19c-1.0-2.el8.x86_64.rpm
 or
-yum install -y oracle-database-preinstall-19cr
+yum install -y oracle-database-preinstall-19c
 
 // 커널 파라미터 확인
 cat /etc/sysctl.conf
@@ -25,6 +25,22 @@ sysctl -p
 
 //limit conf 확인
 vi /etc/security/limits.d/oracle-database-preinstall-19c.conf
+
+sed -e '/^\s*#/d' -e '/^\s*$/d' /etc/security/limits.d/oracle-database-preinstall-19c.conf
+awk '!/^($|#)/' /etc/security/limits.d/oracle-database-preinstall-19c.conf
+grep -vE '^\s*(#|$)' /etc/security/limits.d/oracle-database-preinstall-19c.conf
+
+oracle   soft   nofile    1024
+oracle   hard   nofile    65536
+oracle   soft   nproc    16384
+oracle   hard   nproc    16384
+oracle   soft   stack    10240
+oracle   hard   stack    32768
+oracle   hard   memlock    134217728
+oracle   soft   memlock    134217728
+oracle   soft   data    unlimited
+oracle   hard   data    unlimited
+
 
 
 //계정 및 그룹 확인
@@ -40,6 +56,10 @@ cat /etc/passwd | grep oracle
 passwd oracle  oracle//oracle
 
 su - oracle
+
+## id oracle 확인후 그룹 셋팅 안되어 있을시
+usermod -g oinstall -G dba,backupdba,dgdba,kmdba,racdba oracle
+
 
 
 //디렉토리 생성

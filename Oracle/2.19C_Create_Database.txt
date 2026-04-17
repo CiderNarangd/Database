@@ -32,7 +32,7 @@ CREATE SPFILE FROM PFILE;
 
 =========================================================================================== 
   
-//Not Using DBCA  
+//Not Using DBCA  // Manual
 Host - Oracle19c-m2
 
 //pfile 생성
