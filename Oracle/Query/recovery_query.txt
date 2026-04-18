@@ -1,0 +1,84 @@
+https://docs.google.com/spreadsheets/d/1pQXscwuh-LNUYINYZrDrxPo1hcYY5n32pqAGztM_afA/edit?gid=2085491127#gid=2085491127
+
+// dirty buffer save to datafile
+alter system checkpoint;
+
+// Log Switch
+alter system switch logfile;
+
+// Generate Archive 
+alter system archive log current;
+
+//controlfile backup
+alter database backup controlfile to '/home/oracle/backup/open_bkp/control_20260410.ctl';
+
+//control file backup trace
+ALTER DATABASE BACKUP CONTROLFILE TO TRACE;
+alter database backup controlfile to trace as '/path/crecon.sql'
+
+//pfile to spfile
+create pfile from spfile
+create pfile='/path' from spfile
+
+//spfile to pfile
+
+create spfile from pfile;
+create spfile from pfile='/path';
+
+//recover
+RECOVER DATABASE;
+recover database until cancel
+RECOVER DATABASE USING BACKUP CONTROLFILE UNTIL CANCEL;
+RECOVER DATAFILE '/path/to/datafile.dbf';
+
+ALTER TABLESPACE users OFFLINE IMMEDIATE;
+ALTER TABLESPACE users OFFLINE;
+ALTER TABLESPACE users ONLINE;
+
+ALTER DATABASE DATAFILE '/u01/app/oracle/oradata/users01.dbf' OFFLINE;
+ALTER DATABASE DATAFILE 5 ONLINE;
+
+//restore
+RESTORE DATABASE;
+
+
+//rename
+ALTER TABLESPACE users RENAME DATAFILE '/old/path/users01.dbf' TO '/new/path/users01.dbf';
+ALTER DATABASE RENAME FILE '/old/path/users01.dbf' TO '/new/path/users01.dbf';
+
+
+ALTER DATABASE RENAME FILE '/old/log/redo01.log' TO '/new/log/redo01.log';
+--> need mount
+
+
+//alter undo_tablespace
+alter system set undo_tablespace = undo;
+
+
+//Drop Logfile group
+alter database drop logfile group 4;
+
+//Add Logfile group
+alter database add logfile group 1 '/u02/oradata/orcl/redo01.log' size 100m;
+
+// redo log reset & recreate
+alter database clear unarchived logfile group 4;
+--> 아카이브 안된것도 강제로 날림
+
+ALTER DATABASE CLEAR ARCHIVED LOGFILE GROUP 4;
+--> Archive Yes일떄 사용
+
+
+//archive 전환 --> Mount 상태에서
+ALTER DATABASE ARCHIVELOG;
+alter database noarchivelog;
+
+
+---
+
+pfile
+_allow_resetlogs_corruptio=true;
+
+
+
+
