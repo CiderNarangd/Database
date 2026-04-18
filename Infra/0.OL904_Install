@@ -1,0 +1,106 @@
+Oracle Linux 9.4 Install
+
+VM Program - Oracle Virtual Box
+OS - Oracle Linux  9.4
+
+Network
+어댑터1 -> 호스트 전용 어댑터 / 내부망
+어댑터2 -> NAT / 외부망
+
+무인설치 건너뛰기
+
+Processor - 8 
+Mem 8Gb
+
+------------------------------------------------------------------
+
+Localization
+time&date -> Asia/Seoul
+
+User SEttings
+rootpw -> oracle
+User Creation -> kinam/oracle / make admin check
+
+
+SOFTWARE
+Installation Source
+-> PAss
+SoftWare Selection
+->Server With GUI
+ - Development Tools
+ - System Tools
+ - Legacy UNIX Compatibility
+
+SYSTEM
+Installation Destination
+
+Storage config  / Custom
+/tmp  -> xfs / 2Gb
+/boot -> xfs / 1Gb
+swap  -> 10Gb
+/	 -> xfs
+
+KDUP 
+->Disable
+
+Network & Host Name
+-> Connect automatically with priority Check
+enp0s3 
+ipv4 Settings
+Manual
+Address - 192.168.56.102
+netmask 255.255.255.0
+
+enp0s8
+ipv4 Settings
+Automatic(DHCP)
+DNS 8.8.8.8
+
+Begin Install
+
+--------------------------------------------------------------------------------
+
+GuestAddition 추가설치
+
+su - root
+
+*HostName및 도메인 매핑 수정필요
+
+//hostname 변경
+hostnamectl set-hostname oracle19c-m
+
+//hostname 매핑
+vi /etc/hosts
+
+================================
+
+192.168.56.102 oracle19c-m 
+
+=============================
+reboot
+
+//공유폴더 셋팅 및 설치파일 복사
+mkdir -p /storage/downloads
+chmod -R 777 /storage
+
+마운트 지점 : /media/shared
+chmod -R 777 /media/shared 
+
+usermod -aG vboxsf kinam
+usermod -aG vboxsf root
+
+--> 계정 추가될때마다 그룹추가
+
+
+//방화벽 해제
+systemctl disable firewalld
+systemctl stop firewalld
+
+//SELinux 해체
+vi /etc/selinux/config
+selinux=disabled
+
+Reboot
+[root@oracle19c-m ~]# sestatus
+
+
