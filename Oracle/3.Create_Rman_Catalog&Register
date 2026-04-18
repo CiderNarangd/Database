@@ -1,0 +1,161 @@
+Rman Create Catalog & Register
+
+Catalog Host - oracle19c-rman // 192.168.56.106
+Target Host1 - oracle19c-m	  // 192.168.56.102 
+Target Host2 - oracle19c-m2	  // 192.168.56.103 
+
+
+// /etc/hosts 수정 (optional)
+su - root
+vi /etc/hosts
+
+아래 항목 추가
+==========================
+
+192.168.56.106 oracle19c-rman
+192.168.56.102 oracle19c-m 
+192.168.56.103 oracle19c-m2
+
+============================
+ping oracle19c-rman -c 3
+ping oracle19c-m -c 3 
+ping oracle19c-m2 -c 3
+
+
+
+// listener.ora 수정
+vi listener.ora
+3개 호스트 모두 등록 / 모두 동일한 SID 사용중
+============================================
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (SID_NAME = orcl)
+      (ORACLE_HOME = /u01/app/oracle/product/19.3.0/dbhome_1)
+      (GLOBAL_DBNAME = orcl)
+    )
+  )
+
+============================================
+lsnrctl reload
+lsnrctl status
+
+//tnsnames.ora 수정
+vi tnsnames.ora
+================================
+
+ramn_remote =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.106)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = ORCL)
+    )
+  )
+  
+19cm1_remote =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.102)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = ORCL)
+    )
+  )  
+  
+19cm2_remote =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.103)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = ORCL)
+    )
+  )    
+
+
+============================
+
+//tnsping 확인
+
+tnsping ramn_remote
+tnsping 19cm1_remote
+tnsping 19cm2_remote
+
+// sqlplus 원격 접속 확인
+sqlplus sys/oracle@ramn_remote as sysdba
+conn ruser/ruser@ramn_remote
+
+sqlplus sys/oracle@19cm1_remote as sysdba
+sqlplus sys/oracle@19cm2_remote as sysdba
+
+
+-- In Catalog Host
+
+// rman catalog tablespace 생성
+create tablespace rman_ts datafile '/u02/oradata/ORCL/rman_ts.dbf' size 5000m;
+
+// rman user 생성
+create user ruser identified by ruser
+default tablespace rman_ts
+quota unlimited on rman_ts;
+
+grant connect, resource, recovery_catalog_owner to ruser;
+
+//rman catalog 생성
+
+rman catalog ruser/ruser@ramn_remote
+
+[oracle@oracle19c-rman admin]$ rman catalog ruser/ruser@ramn_remote
+Recovery Manager: Release 19.0.0.0.0 - Production on Sun Apr 19 01:04:35 2026
+Version 19.3.0.0.0
+
+Copyright (c) 1982, 2019, Oracle and/or its affiliates.  All rights reserved.
+
+connected to recovery catalog database
+
+
+
+01:05:07 RUSER@ORCL > select count(*) from tab;
+
+        COUNT(*)
+----------------
+               0
+
+RMAN> create catalog;
+recovery catalog created
+
+//카타로그뷰 생성 확인
+01:05:11 RUSER@ORCL > select count(*) from tab;
+
+        COUNT(*)
+----------------
+             159
+
+
+// rman target register
+rman target "'sys/oracle@19cm1_remote as sysdba'" catalog ruser/ruser@ramn_remote
+register database;
+
+RMAN> register database;
+
+database registered in recovery catalog
+starting full resync of recovery catalog
+full resync complete
+ 
+rman target "'sys/oracle@19cm2_remote as sysdba'" catalog ruser/ruser@ramn_remote
+register database;
+
+
+01:07:21 RUSER@ORCL > select * from db;
+
+  DB_KEY            DB_ID REG_DB_UNIQUE_NAME    CURR_DBINC_KEY S   PDB_KEY GUID                                CON_ID
+-------- ---------------- -------------------- --------------- - --------- -------------------------------- ---------
+       1    1,757,511,488 ORCL                               2 N         4 4EA495B2C8622E28E0636638A8C0C3EC         0
+      29    1,757,511,487 ORCL                              30 N        32 4EA495A68FCE3491E0636738A8C0CE0F         0
+	  
+2개 DB등록 확인	  
+
+
+
+
+	  
