@@ -1,0 +1,22 @@
+Python3 Version Upgrade
+
+sudo dnf module list python
+
+sudo dnf install -y python3.11
+
+sudo alternatives --set python /usr/bin/python3.11
+
+
+[root@mysql84-m bin]# alternatives --config python3
+
+There are 2 programs which provide 'python3'.
+
+  Selection    Command
+-----------------------------------------------
+*+ 1           /usr/bin/python3.6
+   2           /usr/bin/python3.11
+
+Enter to keep the current selection[+], or type selection number: 2 
+
+[root@mysql84-m bin]# python3 --version
+Python 3.11.13
