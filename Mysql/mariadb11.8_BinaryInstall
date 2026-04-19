@@ -1,0 +1,110 @@
+Maria11.8 Install
+
+OS - Red Hat Enterprise Linux release 9.4 (Plow)
+
+
+// Mysql Group & User 추가
+groupadd mysql
+useradd -r -g mysql -s /bin/false mysql
+
+//압축해제
+cd /usr/local
+tar -zxvf /storage/downloads/mariadb-11.8.6-linux-systemd-x86_64.tar.gz -C /usr/local/
+ln -s /usr/local/mariadb-11.8.6-linux-systemd-x86_64 mysql
+
+
+//mysql Log & Data dir생성
+
+Data dir - /u01/mysql/{Host_name}/DATA
+Log DIr	 - /u01/mysql/{Host_name}/ADMIN
+Bin Log  - /u01/mysql/{Host_name}/BINLOG
+IBLOG	 - /u01/mysql/{Host_name}/IBLOG
+
+mkdir -p  /u01/mysql/mysql84-m/DATA
+mkdir -p  /u01/mysql/mysql84-m/ADMIN
+mkdir -p  /u01/mysql/mysql84-m/BINLOG
+mkdir -p  /u01/mysql/mysql84-m/IBLOG
+
+// 디렉토리 권한변경
+
+chown -R mysql:mysql /usr/local/mysql
+chown -R mysql:mysql /usr/local/mariadb-11.8.6-linux-systemd-x86_64/
+chmod 775 -R /usr/local/mysql
+
+
+//My.cnf 작성 
+vi /etc/my.cnf
+===============================
+
+[client]
+port            = 3306
+socket          = /u01/mysql/mysql84-m/DATA/mysql.sock
+
+[mysqld]
+#data dir
+basedir         = /usr/local/mysql
+datadir         = /u01/mysql/mysql84-m/DATA
+socket          = /u01/mysql/mysql84-m/DATA/mysql.sock
+
+log-error       = /u01/mysql/mysql84-m/ADMIN/error_log.log
+log-bin         = /u01/mysql/mysql84-m/BINLOG/mysql-bin
+
+innodb_log_group_home_dir = /u01/mysql/mysql84-m/IBLOG
+
+===========================
+
+chown -R mysql:mysql /etc/my.cnf
+chmod 775 -R /etc/my.cnf
+
+
+// initialization
+
+cd /usr/local/mysql
+
+./scripts/mariadb-install-db \
+--user=mysql \
+--defaults-file=/etc/my.cnf
+
+[root@maria11-m mysql]# ./scripts/mariadb-install-db \
+--user=mysql \
+--defaults-file=/etc/my.cnf
+Installing MariaDB/MySQL system tables in '/u01/mysql/mysql84-m/DATA' ...
+OK
+
+To start mariadbd at boot time you have to copy
+support-files/mariadb.service to the right place for your system
+
+
+Two all-privilege accounts were created.
+One is root@localhost, it has no password, but you need to
+be system 'root' user to connect. Use, for example, sudo mariadb
+The second is mysql@localhost, it has no password either, but
+you need to be the system 'mysql' user to connect.
+After connecting you can set the password, if you would need to be
+able to connect as any of these users with a password and without sudo
+
+See the MariaDB Knowledgebase at https://mariadb.com/kb
+
+You can start the MariaDB daemon with:
+cd '/usr/local/mysql' ; /usr/local/mysql/bin/mariadbd-safe --datadir='/u01/mysql/mysql84-m/DATA'
+
+You can test the MariaDB daemon with mariadb-test-run.pl
+cd '/usr/local/mysql/mariadb-test' ; perl mariadb-test-run.pl
+
+Please report any problems at https://mariadb.org/jira
+
+The latest information about MariaDB is available at https://mariadb.org/.
+
+Consider joining MariaDB's strong and vibrant community:
+https://mariadb.org/get-involved/
+
+
+//Run
+
+/usr/local/mysql/bin/mysqld_safe --user=mysql &
+
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'oracle';
+
+정리해야됨
+//환경변수추가
+//간편접속셋팅
