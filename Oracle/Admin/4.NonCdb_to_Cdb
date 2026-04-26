@@ -1,0 +1,347 @@
+Non CDB to CDB
+
+Host - Oracle19c-m4
+2 Single Instance -> Noncdb & CDB
+
+Instance1 
+Container Database
+SID - ORCL
+*샘플 스키마만 있는상태
+
+Instance2
+Non Container Database
+SID - KCDB
+* PDB 1개만 생성해놓은 상태.
+
+//In orcl instance
+
+SYS@ORCL > 
+SELECT version FROM v$instance;
+
+VERSION
+-----------------
+19.0.0.0.0
+
+15:52:57 SYS@ORCL > SELECT name, open_mode, cdb FROM v$database;
+
+NAME      OPEN_MODE            CDB
+--------- -------------------- ---
+ORCL      READ WRITE           NO
+
+
+//In kcdb instance
+
+SYS@KCDB > show pdbs;
+
+ CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+------- ------------------------------ ---------- ----------
+      2 PDB$SEED                       READ ONLY  NO
+      3 KPDB1                          READ WRITE NO
+
+
+SYS@KCDB > SELECT version FROM v$instance;
+
+VERSION
+-----------------
+19.0.0.0.0
+
+Elapsed: 00:00:00.01
+15:54:10 SYS@KCDB > SELECT name, open_mode, cdb FROM v$database;
+
+NAME      OPEN_MODE            CDB
+--------- -------------------- ---
+KCDB      READ WRITE           YES
+
+
+//In orcl instance
+
+** full backup 진행 **
+
+SHUTDOWN IMMEDIATE;
+STARTUP OPEN READ ONLY;
+
+EXEC DBMS_PDB.DESCRIBE(pdb_descr_file => '/home/oracle/noncdb.xml');
+PL/SQL procedure successfully completed.
+
+shut immediate;
+
+
+[oracle@oracle19c-m4 ~]$ pwd
+/home/oracle
+[oracle@oracle19c-m4 ~]$ ll | grep noncdb.xml
+-rw-r--r--  1 oracle oinstall     6695 Apr 26 16:08 noncdb.xml
+
+
+
+//IN KCDB 
+-- 호환성 검사
+
+SET SERVEROUTPUT ON
+DECLARE
+  compatible CONSTANT VARCHAR2(3) :=
+    CASE DBMS_PDB.CHECK_PLUG_COMPATIBILITY(
+           pdb_descr_file => '/home/oracle/noncdb.xml',
+           pdb_name       => 'newpdb')
+    WHEN TRUE THEN 'YES' ELSE 'NO' END;
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('Compatible: ' || compatible);
+END;
+/
+
+Compatible: YES
+
+PL/SQL procedure successfully completed.
+
+
+
+
+SELECT name, cause, type, message, status
+FROM   pdb_plug_in_violations
+WHERE  name = 'NEWPDB';
+
+NAME     CAUSE			 TYPE	  MESSAGE																	 STATUS
+------- --------------- -------- -----------------------------------------------------------------  		--------
+NEWPDB  Non-CDB to PDB	WARNING   PDB plugged in is a non-CDB, requires noncdb_to_pdb.sql be run. 			 PENDING
+NEWPDB  Parameter 		WARNING   CDB parameter sga_target mismatch: Previous 2304M Current 2400M		 	 PENDING
+NEWPDB  Parameter 		WARNING   CDB parameter pga_aggregate_target mismatch: Previous 768M Current 795M 	 PENDING
+
+
+--ORCL DB (NON CDB) Shutdown
+
+CREATE PLUGGABLE DATABASE newpdb USING '/home/oracle/noncdb.xml'
+  COPY
+  FILE_NAME_CONVERT = ('/u02/oradata/ORCL/',
+                       '/u02/oradata/KCDB/newpdb/');
+					   
+					   or
+					   
+CREATE PLUGGABLE DATABASE newpdb USING '/home/oracle/noncdb.xml'
+NOCOPY
+tempfile reuse;       
+--> xml파일 따로 또 생성
+					   
+					   
+**  Copy	-> 새 경로로 복사 / 원본 non-cdb 보존 필요 
+    Nocopy	-> 파일 그대로 사용(링크) / 파일 이동 불필요함
+	Move	-> 새 경로로 이동 / 원본 사라짐 
+
+
+***** no copy시  *****
+SYS@KCDB > select NAME from v$datafile;
+NAME
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/u02/oradata/KCDB/system01.dbf
+/u02/oradata/KCDB/sysaux01.dbf
+/u02/oradata/KCDB/undotbs01.dbf
+/u02/oradata/KCDB/pdbseed/system01.dbf
+/u02/oradata/KCDB/pdbseed/sysaux01.dbf
+/u02/oradata/KCDB/users01.dbf
+/u02/oradata/KCDB/pdbseed/undotbs01.dbf
+/u02/oradata/KCDB/kpdb1/system01.dbf
+/u02/oradata/KCDB/kpdb1/sysaux01.dbf
+/u02/oradata/KCDB/kpdb1/undotbs01.dbf
+/u02/oradata/KCDB/kpdb1/users01.dbf
+/u02/oradata/ORCL/system01.dbf
+/u02/oradata/ORCL/sysaux01.dbf
+/u02/oradata/ORCL/undotbs01.dbf
+/u02/oradata/ORCL/users01.dbf
+
+--> Drop시 includig datafiles 옵션 사용하면 원본 non-cdb의 데이터가 드랍됨
+
+
+
+
+SYS@KCDB > 
+CREATE PLUGGABLE DATABASE newpdb USING '/home/oracle/noncdb.xml'
+  COPY
+  FILE_NAME_CONVERT = ('/u02/oradata/ORCL/',
+                '/u02/oradata/KCDB/newpdb/');
+
+Pluggable database created.
+
+
+SYS@KCDB > show pdbs;
+  CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+-------- ------------------------------ ---------- ----------
+       2 PDB$SEED                       READ ONLY  NO
+       3 KPDB1                          MOUNTED    [NULL]
+       4 NEWPDB                         MOUNTED    [NULL]
+	   
+	   
+ALTER PLUGGABLE DATABASE newpdb OPEN UPGRADE;
+
+16:57:34 SYS@KCDB > show pdbs;
+
+          CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------------- ------------------------------ ---------- ----------
+               2 PDB$SEED                       READ ONLY  NO
+               3 KPDB1                          MOUNTED    [NULL]
+               4 NEWPDB                         MIGRATE    YES
+
+
+ALTER SESSION SET CONTAINER = newpdb;
+
+-- 딕셔너리 변환 스크립트 (생략 시 PDB 정상 동작 안 함)
+@$ORACLE_HOME/rdbms/admin/noncdb_to_pdb.sql
+
+//In CDB After Complete Scripts..
+
+ALTER PLUGGABLE DATABASE newpdb CLOSE;
+ALTER PLUGGABLE DATABASE newpdb OPEN;
+	   
+	   
+18:39:42 SYS@KCDB > show pdbs;
+
+          CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------------- ------------------------------ ---------- ----------
+               2 PDB$SEED                       READ ONLY  NO
+               3 KPDB1                          MOUNTED    [NULL]
+               5 NEWPDB                         READ WRITE NO	   
+			   
+			   
+		
+18:42:42 SYS@KCDB > show con_name;
+
+CON_NAME
+------------------------------
+NEWPDB
+
+
+// 스키마 확인
+SELECT username
+FROM dba_users
+WHERE oracle_maintained = 'N' ;
+
+USERNAME
+---------------------
+HR
+BI
+CO
+OE
+PM
+IX
+SH
+7 rows selected.
+
+
+SELECT table_name 
+FROM dba_tables 
+WHERE owner = 'HR';
+
+TABLE_NAME
+---------------
+REGIONS
+COUNTRIES
+LOCATIONS
+DEPARTMENTS
+JOBS
+EMPLOYEES
+JOB_HISTORY
+
+
+
+SYS@KCDB > conn hr/hr@KCDB_NEWDB
+Connected.
+HR@KCDB_NEWDB > conn co/co@KCDB_NEWDB
+Connected. 
+
+HR@KCDB_NEWDB > show con_name
+
+CON_NAME
+------------------------------
+NEWPDB
+
+HR@kcdb_newdb > select count(*) from employees;
+
+  COUNT(*)
+----------
+       107
+
+
+drop pluggable database newpdb including datafiles;
+drop pluggable database newpdb2 keep datafiles;
+
+
+
+SYS@KCDB > drop pluggable database newpdb2 keep datafiles;
+drop pluggable database newpdb2 keep datafiles
+*
+ERROR at line 1:
+ORA-65179: cannot keep datafiles for a pluggable database that is not unplugged
+
+ALTER PLUGGABLE DATABASE newpdb2 UNPLUG INTO '/home/oracle/newpdb2.xml';
+DROP PLUGGABLE DATABASE newpdb2 KEEP DATAFILES;
+
+=================================================================================================================================
+// Script Error시
+
+** 작업도중 아래 에러 지속적으로 발생.
+
+SYS@KCDB > update obj$ set status = 6
+  2          where &typestoinv                                                                                                                                           
+  3          and ((subname is null) or (subname <> 'DBMS_DBUPGRADE_BABY'))                                                                                               
+  4          and status not in (5,6)                                                                                                                                     
+  5          and linkname is null                                                                                                                                        
+  6          and not exists (select 1                                                                                                                                    
+  7                          from type$                                                                                                                                  
+  8                          where (bitand(properties, 16) = 16)                                                                                                         
+  9                          and toid = obj$.oid$) &andorclsupp &andapp                                                                                                  
+ 10  /                                                                                                                                                                   
+                        and toid = obj$.oid$) and bitand(flags,4194304)<>0 [NULL]                                                                                                 
+                                                                           *                                                                                                      
+ERROR at line 9:                                                                                                                                                                  
+ORA-00933: SQL command not properly ended  
+
+
+ALTER PLUGGABLE DATABASE newpdb CLOSE;
+drop pluggable database newpdb including datafiles;
+
+** nocopy시 원본 noncdb도 삭제되니 주의.
+
+
+
+select decode(cnt, 0, '', 'and bitand(flags,4194304)<>0') andorclsupp
+  from (select count(*) cnt from props$
+        where name='NONCDB_TO_PDB.SQL' and value$='CONVERTING');
+
+
+props$에 NONCDB_TO_PDB.SQL = 'CONVERTING' 
+행이 없으면 cnt=0 → decode(0, 0, '', ...) → 빈 문자열 → NULL로 처리 → ORA-00933.
+CONVERTING 값은 noncdb_to_pdb.sql 실행 초반에 세팅돼야 하는데 안 된 것.
+
+SELECT name, value$ FROM props$
+WHERE name IN ('NONCDB_TO_PDB.SQL', 'PDB_TO_APPPDB.SQL');
+
+NAME		   		 VALUE$
+------------------  ---------
+NONCDB_TO_PDB.SQ  	 TRUE
+
+
+UPDATE props$ SET value$ = 'CONVERTING'
+WHERE name = 'NONCDB_TO_PDB.SQL';
+commit;
+
+SELECT name, value$ FROM props$
+WHERE name = 'NONCDB_TO_PDB.SQL';
+
+NAME    			VALUE$
+------------------  -------------
+NONCDB_TO_PDB.SQL	CONVERTING
+
+
+cp $ORACLE_HOME/rdbms/admin/utlip.sql \
+   $ORACLE_HOME/rdbms/admin/utlip.sql.bak
+
+vi $ORACLE_HOME/rdbms/admin/utlip.sql
+
+122 COLUMN andapp NEW_VALUE andapp
+123 select decode(cnt, 0, 'and 1=1', 'and bitand(flags,134217728)<>0') andapp			<<<<<<
+124   from (select count(*) cnt from props$
+125         where name='PDB_TO_APPPDB.SQL' and value$='CONVERTING');
+
+116 COLUMN andorclsupp NEW_VALUE andorclsupp
+117 select decode(cnt, 0, 'and 1=1', 'and bitand(flags,4194304)<>0') andorclsupp		<<<<<<
+118   from (select count(*) cnt from props$
+119         where name='NONCDB_TO_PDB.SQL' and value$='CONVERTING');
+
+ ----- 위 2곳 수정후 noncdb_to_pdb.sql 실행 ------
