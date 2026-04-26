@@ -1,0 +1,136 @@
+Lock 쿼리
+--세션
+SELECT
+    sid,
+    serial#,
+    username,
+    status,
+    machine,
+    program,
+    event,
+    blocking_session
+FROM v$session
+WHERE blocking_session IS NOT NULL;
+
+--Blocker/Waiter 
+SELECT
+    w.sid AS waiter_sid,
+    w.serial# AS waiter_serial,
+    w.username AS waiter_user,
+    h.sid AS blocker_sid,
+    h.serial# AS blocker_serial,
+    h.username AS blocker_user,
+    o.object_name,
+    l1.type,
+    l1.lmode AS blocker_lmode,
+    l2.request AS waiter_request
+FROM v$lock l1
+JOIN v$lock l2
+    ON l1.id1 = l2.id1
+   AND l1.id2 = l2.id2
+JOIN v$session h
+    ON l1.sid = h.sid
+JOIN v$session w
+    ON l2.sid = w.sid
+LEFT JOIN dba_objects o
+    ON l1.id1 = o.object_id
+WHERE l1.block = 1
+AND l2.request > 0;
+
+
+세션킬
+ALTER SYSTEM KILL SESSION 'SID,SERIAL#';
+
+--Blocking / Waiting 세션 확인
+-- sid - waiting session
+-- blocking_session -락 들고 있는 세션
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    s.blocking_session,
+    s.event,
+    s.seconds_in_wait,
+    s.state
+FROM v$session s
+WHERE s.blocking_session IS NOT NULL;
+
+--blocker/waiter 관계 확인
+SELECT
+    w.sid waiter_sid,
+    w.serial# waiter_serial,
+    w.username waiter_user,
+    h.sid blocker_sid,
+    h.serial# blocker_serial,
+    h.username blocker_user
+FROM v$session w
+JOIN v$session h
+ON w.blocking_session = h.sid;
+
+--어떤 sql이 락 걸었는지
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    q.sql_text
+FROM v$session s
+JOIN v$sql q
+ON s.sql_id = q.sql_id
+WHERE s.sid = &sid;
+
+--어떤 오브젝트가 락 걸렸는지
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    o.object_name,
+    o.object_type
+FROM v$locked_object l
+JOIN dba_objects o
+ON l.object_id = o.object_id
+JOIN v$session s
+ON l.session_id = s.sid;
+
+--전체 락 상태 확인
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    l.type,
+    l.lmode,
+    l.request
+FROM v$session s
+JOIN v$lock l
+ON s.sid = l.sid;
+
+
+// 세션 조회
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    s.blocking_session,
+    s.seconds_in_wait,
+    q.sql_text				--> 대기중인 쿼리
+FROM v$session s
+LEFT JOIN v$sql q
+ON s.sql_id = q.sql_id
+WHERE s.blocking_session IS NOT NULL;
+
+
+-->blocker/waiter 쿼리까지 전체
+SELECT
+    w.sid waiter_sid,
+    w.serial# waiter_serial,
+    w.username waiter_user,
+    qw.sql_text waiter_sql,
+    b.sid blocker_sid,
+    b.serial# blocker_serial,
+    qb.sql_text blocker_sql
+FROM v$session w
+JOIN v$session b
+ON w.blocking_session = b.sid
+LEFT JOIN v$sql qw
+ON w.sql_id = qw.sql_id
+LEFT JOIN v$sql qb
+ON b.sql_id = qb.sql_id;
