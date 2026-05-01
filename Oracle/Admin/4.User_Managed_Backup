@@ -1,0 +1,108 @@
+User Managed Backup
+
+==== No Archive Mode =====
+
+//Cold Backup
+
+//Datafile 
+FILE#	NAME 							CHECKPOINT_CHANGE# 	STATUS       STATUS    CHANGE#  BK_TIME
+------- ------------------------------- ------------------ ---------- 	--------- --------- --------------
+1		/u02/oradata/ORCL/system01.dbf	2,332,712 			NOT ACTIVE   SYSTEM      0 		[NULL]
+3		/u02/oradata/ORCL/sysaux01.dbf	2,332,712 			NOT ACTIVE   ONLINE      0 		[NULL]
+4		/u02/oradata/ORCL/undotbs01.dbf 2,332,712 			NOT ACTIVE   ONLINE      0 		[NULL]
+7		/u02/oradata/ORCL/users01.dbf	2,332,712 			NOT ACTIVE   ONLINE      0 		[NULL]
+
+
+NAME													  BLOCK_SIZE   FILE_SIZE_BLKS   CON_ID
+-------------------------------------------------------- ------------- ---------------- ----
+/u02/oradata/ORCL/control01.ctl							      16,384   646               0
+/u02/oradata/ORCL/fast_recovery_area/ORCL/control02.ctl	      16,384   646               0
+
+
+          GROUP#        SEQUENCE#
+---------------- ----------------
+MEMBER
+--------------------------------------------------------------------------
+              MB STATUS           ARC    FIRST_CHANGE#     NEXT_CHANGE#
+---------------- ---------------- --- ---------------- ----------------
+               1               13
+/u02/oradata/ORCL/redo01.log
+             100 CURRENT          NO         2,332,712 ################
+
+               2               11
+/u02/oradata/ORCL/redo02.log
+             100 INACTIVE         NO         2,146,813        2,285,619
+
+               3               12
+/u02/oradata/ORCL/redo03.log
+             100 INACTIVE         NO         2,285,619        2,332,712
+
+
+
+Shutdown immeidate
+
+[oracle@oracle19c-m backup]$ cp -rvf /u02/oradata/ORCL/*  /home/oracle/backup
+‘/u02/oradata/ORCL/control01.ctl’ -> ‘/home/oracle/backup/control01.ctl’
+‘/u02/oradata/ORCL/fast_recovery_area’ -> ‘/home/oracle/backup/fast_recovery_area’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_04’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_04’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_05’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_18’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_18’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_05_01’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_05_01’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_05_02’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_05_02’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/control02.ctl’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/control02.ctl’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/onlinelog’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/onlinelog’
+‘/u02/oradata/ORCL/redo01.log’ -> ‘/home/oracle/backup/redo01.log’
+‘/u02/oradata/ORCL/redo02.log’ -> ‘/home/oracle/backup/redo02.log’
+‘/u02/oradata/ORCL/redo03.log’ -> ‘/home/oracle/backup/redo03.log’
+‘/u02/oradata/ORCL/sysaux01.dbf’ -> ‘/home/oracle/backup/sysaux01.dbf’
+‘/u02/oradata/ORCL/system01.dbf’ -> ‘/home/oracle/backup/system01.dbf’
+‘/u02/oradata/ORCL/temp01.dbf’ -> ‘/home/oracle/backup/temp01.dbf’
+‘/u02/oradata/ORCL/undotbs01.dbf’ -> ‘/home/oracle/backup/undotbs01.dbf’
+‘/u02/oradata/ORCL/users01.dbf’ -> ‘/home/oracle/backup/users01.dbf’
+
+
+-- Restore 필요시 DB 종료상태에서 백업파일들 각각의 파일 경로에 맞게끔 복사후 스타트
+ 
+===== Archive Mode =======
+
+//Live Hot Backup
+
+SYS@ORCL > archive log list
+Database log mode              Archive Mode
+Automatic archival             Enabled
+Archive destination            /home/oracle/orcl_arc/
+Oldest online log sequence     11
+Next log sequence to archive   13
+Current log sequence           13
+
+
+//No Archive Mode와 동일하게 컨트롤파일, 데이터파일, 리두로그 위치 확인
+
+SYS@ORCL > alter database begin backup;
+
+Database altered.
+
+[oracle@oracle19c-m backup]$ cp -rvf /u02/oradata/ORCL/*  /home/oracle/backup
+‘/u02/oradata/ORCL/control01.ctl’ -> ‘/home/oracle/backup/control01.ctl’
+‘/u02/oradata/ORCL/fast_recovery_area’ -> ‘/home/oracle/backup/fast_recovery_area’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_04’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_04’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_05’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_05’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_04_18’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_04_18’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_05_01’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_05_01’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/archivelog/2026_05_02’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/archivelog/2026_05_02’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/control02.ctl’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/control02.ctl’
+‘/u02/oradata/ORCL/fast_recovery_area/ORCL/onlinelog’ -> ‘/home/oracle/backup/fast_recovery_area/ORCL/onlinelog’
+‘/u02/oradata/ORCL/redo01.log’ -> ‘/home/oracle/backup/redo01.log’
+‘/u02/oradata/ORCL/redo02.log’ -> ‘/home/oracle/backup/redo02.log’
+‘/u02/oradata/ORCL/redo03.log’ -> ‘/home/oracle/backup/redo03.log’
+‘/u02/oradata/ORCL/sysaux01.dbf’ -> ‘/home/oracle/backup/sysaux01.dbf’
+‘/u02/oradata/ORCL/system01.dbf’ -> ‘/home/oracle/backup/system01.dbf’
+‘/u02/oradata/ORCL/temp01.dbf’ -> ‘/home/oracle/backup/temp01.dbf’
+‘/u02/oradata/ORCL/undotbs01.dbf’ -> ‘/home/oracle/backup/undotbs01.dbf’
+‘/u02/oradata/ORCL/users01.dbf’ -> ‘/home/oracle/backup/users01.dbf’
+
+alter database end backup;
