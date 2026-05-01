@@ -28,7 +28,7 @@ def run_sqlplus(command):
     return stdout, stderr
 
 def do_backup():
-    # 1. 대상 디렉토리 생성
+    
     if not os.path.exists(TARGET_DIR):
         os.makedirs(TARGET_DIR)
         print(f"Create Backup Directory: {TARGET_DIR}")

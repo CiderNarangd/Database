@@ -34,7 +34,6 @@ def do_hot_backup():
 
     print(f"Start Hot Backup: {TIMESTAMP}")
 
-    # 2. Alter Database Begin Backup
     print("Alter Database Begin Backup...")
     stdout, _ = run_sqlplus("alter database begin backup;\nexit;")
     if "Database altered" in stdout:
@@ -44,7 +43,6 @@ def do_hot_backup():
         return
 
     try:
-        # 3. 파일 복사
         print(f"Copy Files: {SOURCE_DIR} -> {TARGET_DIR}")
         for item in os.listdir(SOURCE_DIR):
             s = os.path.join(SOURCE_DIR, item)
@@ -59,7 +57,6 @@ def do_hot_backup():
         print(f"Error: {e}")
 
     finally:
-        # 4. Alter Database End Backup (에러가 나도 반드시 실행되어야 함)
         print("Alter Database End Backup...")
         stdout, _ = run_sqlplus("alter database end backup;\nalter system archive log current;\nexit;")
         if "Database altered" in stdout:
