@@ -1,0 +1,1 @@
+select current_scn from v$database;
