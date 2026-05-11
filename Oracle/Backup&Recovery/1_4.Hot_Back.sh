@@ -24,3 +24,7 @@ exit;
 EOF
 
 echo "Backup Completed: $TARGET_DIR"
+
+echo "Deleting backups older than 3 days.."
+find "$BACKUP_BASE_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +2 -exec rm -rf {} \;
+echo "Old backups deleted."

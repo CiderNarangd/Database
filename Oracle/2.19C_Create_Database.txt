@@ -27,6 +27,12 @@ dbca -silent -createDatabase \
   
 ** databaseType // OLTP or MULTIPURPOSE
   
+** archive_mode로 구축시 // 아카이브 디렉토리 경로 생성 확인 // 디렉토리 없을시 db_recovery_file_dest 사용
+-archiveLogDest Archive_path
+-enableArchive true 
+
+Mount start후 ALTER DATABASE ARCHIVELOG;
+
 --접속 후 
 CREATE SPFILE FROM PFILE;
 
@@ -51,6 +57,13 @@ undo_tablespace=UNDOTBS1
 diagnostic_dest=/u01/app/oracle
 
 ================================
+
+** archive_mode로 구축시 // 아카이브 디렉토리 경로 생성 확인 // 디렉토리 없을시 db_recovery_file_dest 사용
+LOG_ARCHIVE_DEST_1='LOCATION=Path'
+LOG_ARCHIVE_FORMAT='%t_%s_%r.arc'
+LOG_ARCHIVE_MAX_PROCESSES=4
+
+Mount start후 ALTER DATABASE ARCHIVELOG;
 
 mkdir -p /u02/oradata/ORCL
 chown -R oracle:oinstall /u02
