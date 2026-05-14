@@ -1,0 +1,180 @@
+Mysql 8.4 Generic Binary Install
+
+OS - Red Hat Enterprise Linux release 9.7 (Plow)
+Host - mysql97-m
+
+Reference Document url - https://dev.mysql.com/doc/refman/9.7/en/binary-installation.html
+
+// 필요 유틸 설치
+[root@mysql97-m lib]# yum install ncurses-compat-libs
+Last metadata expiration check: 1:42:46 ago on Sun 19 Apr 2026 05:34:14 PM KST.
+No match for argument: ncurses-compat-libs
+Error: Unable to find a match: ncurses-compat-libs
+
+sudo dnf install -y epel-release
+sudo dnf install -y ncurses-compat-libs
+
+//glibc 버전 확인
+getconf -a | grep glibc
+GNU_LIBC_VERSION                   glibc 2.28
+
+// Binary 파일
+
+[root@mysql97-m download]# pwd
+/storage/download
+[root@mysql97-m download]# ll
+total 1688344
+-rwxr-x--- 1 kinam kinam 1571553280 May 19 03:55 mysql-9.7.0-linux-glibc2.28-x86_64.tar
+
+
+// Mysql Group & User 추가
+groupadd mysql
+useradd -r -g mysql -s /bin/false mysql
+
+
+// 압축파일 해제
+cd /usr/local
+tar xvf /storage/downloads/mysql-9.7.0-linux-glibc2.28-x86_64.tar
+ln -s /usr/local/mysql-9.7.0-linux-glibc2.28-x86_64 mysql
+
+//mysql Log & Data dir생성
+
+Data dir - /u01/mysql/{Host_name}/DATA
+Log DIr	 - /u01/mysql/{Host_name}/ADMIN
+Bin Log  - /u01/mysql/{Host_name}/BINLOG
+IBLOG	 - /u01/mysql/{Host_name}/IBLOG
+
+mkdir -p  /u01/mysql/mysql97-m/DATA
+mkdir -p  /u01/mysql/mysql97-m/ADMIN
+mkdir -p  /u01/mysql/mysql97-m/BINLOG
+mkdir -p  /u01/mysql/mysql97-m/IBLOG
+
+// 디렉토리 권한변경
+
+chown -R mysql:mysql /usr/local/mysql
+chown -R mysql:mysql /usr/local/mysql-9.7.0-linux-glibc2.28-x86_64
+chmod 775 -R /usr/local/mysql
+
+
+chown -R mysql:mysql /u01
+chown -R mysql:mysql /u01/mysql/mysql97-m/DATA
+chown -R mysql:mysql /u01/mysql/mysql97-m/ADMIN
+chown -R mysql:mysql /u01/mysql/mysql97-m/BINLOG
+chown -R mysql:mysql /u01/mysql/mysql97-m/IBLOG
+
+chmod 775 -R /u01
+chmod 775 -R /u01/mysql/mysql97-m/DATA
+chmod 775 -R /u01/mysql/mysql97-m/ADMIN
+chmod 775 -R /u01/mysql/mysql97-m/BINLOG
+chmod 775 -R /u01/mysql/mysql97-m/IBLOG
+
+
+//My.cnf 작성 
+vi /etc/my.cnf
+
+===============================
+
+[client]
+port            = 3306
+socket          = /u01/mysql/mysql97-m/DATA/mysql.sock
+#password       = your_password
+
+[mysqld]
+#data dir
+basedir         = /usr/local/mysql
+datadir         = /u01/mysql/mysql97-m/DATA
+socket          = /u01/mysql/mysql97-m/DATA/mysql.sock
+
+log-error       = /u01/mysql/mysql97-m/ADMIN/error_log.log
+log-bin         = /u01/mysql/mysql97-m/BINLOG/mysql-bin
+
+innodb_log_group_home_dir = /u01/mysql/mysql97-m/IBLOG
+innodb_data_home_dir      = /u01/mysql/mysql97-m/DATA
+
+===========================
+
+chown -R mysql:mysql /etc/my.cnf
+chmod 775 -R /etc/my.cnf
+
+
+//initializing
+/usr/local/mysql/bin/mysqld --defaults-file=/etc/my.cnf --initialize --user=mysql
+
+//root 임시 패스워드 확인
+[root@mysql97-m ADMIN]# grep 'temporary password' /u01/mysql/mysql97-m/ADMIN/error_log.log
+2026-05-19T11:46:24.664119Z 6 [Note] [MY-010454] [Server] A temporary password is generated for root@localhost: 4+n5IKxgCdEz
+
+//Run
+usermod -aG mysql kinam
+/usr/local/mysql/bin/mysqld_safe --user=mysql &
+
+
+//mysql clinet로 접속
+/usr/local/mysql/bin/mysql -u root -p
+
+-- root 계정 패스워드 변경
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'oracle';
+
+//환경변수 설정
+
+vi .bashrc
+=================================
+
+export MYSQL_HOME=/usr/local/mysql
+export DATADIR=/u01/mysql/mysql97-m/DATA
+
+export PATH=$MYSQL_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
+
+alias mylog='tail -f /u01/mysql/mysql97-m/ADMIN/error_log.log'
+alias mycnf='vi /etc/my.cnf'
+
+alias data='cd /u01/mysql/mysql97-m/DATA/'
+alias admin='cd /u01/mysql/mysql97-m/ADMIN/'
+alias binlog='cd /u01/mysql/mysql97-m/BINLOG/'
+alias redo='cd /u01/mysql/mysql97-m/IBLOG/'
+
+alias qq='mysql --login-path=local_root'
+
+=====================================
+
+source .bashrc
+
+//간편 접속 셋팅
+mysql_config_editor set --login-path=local_root --host=localhost --user=root --password
+mysql --login-path=local_root
+
+
+// systemd 등록
+1.
+cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld
+chmod +x /etc/init.d/mysqld
+mysql.server 스크립트 내부의 값 입력 필요
+=====================
+basedir=/usr/local/mysql
+datadir=/u01/mysql/mysql97-m/DATA
+=======================
+
+2.
+sudo vi /etc/systemd/system/mysqld.service
+==============================
+[Unit]
+Description=MySQL Server
+After=network.target
+
+[Service]
+User=mysql
+Group=mysql
+Type=notify
+ExecStart=/usr/local/mysql/bin/mysqld --defaults-file=/etc/my.cnf
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+====================================
+
+sudo systemctl daemon-reload
+sudo systemctl enable mysqld
+sudo systemctl start mysqld
+sudo systemctl stop mysqld
+sudo systemctl status mysqld
