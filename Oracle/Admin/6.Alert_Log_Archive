@@ -1,0 +1,106 @@
+Alert Log Archive
+
+
+SYS@ORCL > 
+SELECT value 
+FROM v$diag_info 
+WHERE name = 'Diag Trace';
+
+VALUE
+--------------------------------------------
+/u01/app/oracle/diag/rdbms/orcl/ORCL/trace
+
+[oracle@oracle19c-m trace]$ ll /u01/app/oracle/diag/rdbms/orcl/ORCL/trace | grep alert
+-rw-r----- 1 oracle oinstall 321959 May 17 23:42 alert_ORCL.log
+
+
+backup_date=$(date "+%Y%m%d")
+cp -a alert_ORCL.log alert_ORCL_${backup_date}.log
+cat /dev/null > alert_ORCL.log
+
+
+alert_archive.sh
+
+0 9 * * * /home/oracle/scripts/alert_archive.sh "SID"
+			-> SID 값의 지우고자 하는 alert_log DB SID입력
+============================================
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <ORACLE_SID>"
+    echo "Example: $0 ORCL"
+    exit 1
+fi
+
+
+source ~/.bash_profile
+
+ORACLE_SID=$1
+ORACLE_SID_LOWER=${ORACLE_SID,,}
+
+ALERT_DIR="$ORACLE_BASE/diag/rdbms/${ORACLE_SID_LOWER}/${ORACLE_SID}/trace"
+backup_date=$(date +%Y%m%d)
+
+ALERT_LOG="$ALERT_DIR/alert_${ORACLE_SID}.log"
+ARCHIVE_LOG="$ALERT_DIR/alert_${ORACLE_SID}_${backup_date}.log"
+
+if [ -f "$ALERT_LOG" ]; then
+  
+    cp -a "$ALERT_LOG" "$ARCHIVE_LOG"
+    cat /dev/null > "$ALERT_LOG"
+else
+    exit 1
+fi
+
+find "$ALERT_DIR" -name "alert_${ORACLE_SID}_*.log" -mtime +2 -exec rm -f {} \;
+
+##필요하면 Log 추가작업
+
+=============================================
+
+trace log Archive
+
+adrci> show home
+ADR Homes: 
+diag/rdbms/orcl/ORCL
+
+adrci> purge -age 2880 -type TRACE
+
+매번 수동작업 불가능하니 스크립트 작성후 크론탭 등록
+
+ADR_HOME="diag/rdbms/orcl/ORCL"
+$ORACLE_HOME/bin/adrci exec="set homepath ${ADR_HOME}; purge -age 2880 -type TRACE"
+
+
+
+trace_archive.sh
+0 9 * * * /home/oracle/scripts/trace_archive.sh "SID"
+			-> SID 값의 지우고자 하는 tracelog DB SID입력
+			
+============================================
+
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <ORACLE_SID>"
+    echo "Example: $0 ORCL"
+    exit 1
+fi
+
+source ~/.bash_profile
+
+export ORACLE_SID=$1
+ORACLE_SID_LOWER=${ORACLE_SID,,}
+ADR_HOME="diag/rdbms/${ORACLE_SID,,}/${ORACLE_SID}"
+
+if [ -z "$ORACLE_HOME" ]; then
+    ORACLE_HOME="/u01/app/oracle/product/19.3.0/dbhome_1"
+fi
+
+# 2일 이상된 파일들 삭제
+$ORACLE_HOME/bin/adrci exec="set homepath ${ADR_HOME}; purge -age 2880 -type TRACE"
+
+
+##필요하면 Log 추가작업
+
+=========================================
