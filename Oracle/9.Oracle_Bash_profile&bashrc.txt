@@ -1,0 +1,56 @@
+Oracle Bash Profile & Bashrc
+
+
+.bash_profile
+===============================================================
+
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_DUMP=$ORACLE_BASE/diag/rdbms
+
+export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/dbhome_1
+export ORACLE_SID=ORCL  
+export PATH=$PATH:$ORACLE_HOME/bin
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/lib:/usr/lib
+export CLASSPATH=$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export NLS_DATE_FORMAT="YYYY-MM-DD HH24:MI:SS"
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+export DATA_DIR=/u02/oradata
+export PATH=$PATH:$ORACLE_HOME/bin:/home/oracle/scripts
+
+export TNS_ADMIN=$ORACLE_HOME/network/admin 
+#grid 설치시 해당 변수가 덮어써서 grid 리스너 인식 못할수 있으니 grid 설치시 확인필요
+#grid 설치시 제거 및 주석 권장
+export TEMP=/tmp
+export TMPDIR=/tmp
+export SQLPATH=/home/oracle/scripts
+
+===============================================================
+
+vi .bashrc
+
+================================================================
+
+alias qq='sqlplus / as sysdba'                                                                                     
+alias ww='sqlplus / as sysasm'                                                                                     
+
+alias orcl='export ORACLE_SID=orcl'
+alias newsid='export ORACLE_SID=newsid'
+ 
+#rlwrap 설치되어 있을시 
+alias qqq='rlwrap sqlplus / as sysdba'                                                                             
+alias www='rlwrap sqlplus / as sysasm'
+alias rrr='rlwrap rman'                                                                                                                                               
+alias eee='rlwrap asmcmd'
+
+alias alert='tail -f /u01/app/oracle/diag/rdbms/orcl/orcl/trace/alert_orcl.log'                                    
+alias alertmove='cd /u01/app/oracle/diag/rdbms/orcl/orcl/trace'                                                    
+alias data='cd /u02/oradata/orcl'                                                                                                                                                          
+alias tns='cd $ORACLE_HOME/network/admin'                                                                          
+alias dbs='cd $ORACLE_HOME/dbs'                                                                                    
+alias cdoh='cd $ORACLE_HOME'                                                                                       
+alias cdob='cd $ORACLE_BASE'                                                                                       
+alias cdtrace='cd $ORACLE_BASE/diag/rdbms/orcl/orcl/trace'                                                         
+alias cddata='cd $DATA_DIR'                                                                                        
+alias cdadump='cd $ORACLE_BASE/admin/ORCL/adump'    
+
+=======================================================================
