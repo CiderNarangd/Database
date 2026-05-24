@@ -18,7 +18,7 @@ dbca -silent -createDatabase \
   -memoryMgmtType AUTO_SGA \
   -totalMemory 3072 \
   -datafileDestination /u02/oradata \
-  -recoveryAreaDestination /u02/oradata/ORCL/fast_recovery_area \
+  -recoveryAreaDestination /u02/oradata \
   -recoveryAreaSize 10240 \
   -redoLogFileSize 100 \
   -emConfiguration NONE \

@@ -1,0 +1,30 @@
+rman_concept_2
+
+User-Managed 백업은 
+ALTER DATABASE BEGIN BACKUP 명령어를 통하여 백업모드로 전환후
+대량의 Redo를 발생시켜 fractured block을 복구하는 방식
+
+Rman 
+ - rman에서 타겟DB 연결후 Backup Database 명령어를 사용하면
+	rman은 타겟DB에 서버프로세스 할당 (채널) 
+ - 실제 백업은 rman이 아닌 새로 할당된 서버 프로세스가 수행
+ - 백업 시작전 구조와 SCN정보를 담고 있는 스냅샷파일 생성 
+	-> 백업 중 구조가 변경되더라도 시작 시점의 일관된 구조 보장
+	
+ - 서버 프로세스는 데이터파일에서 블록을 읽어 PGA or LargePool내의 저장
+
+ - RMAN은 Fracutred block을 감지하기 위해 블록을 메모리에 올리자마자
+   즉시 블록의 헤더와 테일의 SCN값을 비교
+   -> 두 SCN이 다름 -> Fracutred block이 발생하였으니 다시 데이터를 읽음(re-load)
+	  이 방식때문에 user-manged방식처럼 대량의 redo를 발생시키지 않음
+	  
+ - 백업 완료후 백업 메타 데이터 컨트롤 파일 / catalog 사용시 catalog db에 저장
+
+ - RMAN 의 백업본 자체는 비일관 백업본임. (User-Managed 포함)
+   -> archive_log를 사용하지 않으면 오래된 백업본은 무용지물 ( user-managed / rman 둘다)
+   -> user-managed 백업에서도 대량의 redo들이 다 날라가버리면 무용지물.
+   
+  -> 핫백업이 필요하면 archive_mode 활성화!
+
+
+

@@ -1,0 +1,200 @@
+Rman 
+
+Rman이란? ->
+ - Recovery Manager 
+ - Oracle Database에서 제공하는 전용 백업 및 복구 관리도구
+ - fullbackup / incremental backup / archive log archiving  pitr 등.. 지원
+ 
+ 
+ 
+ Rman Architecture
+ 
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│    RMAN     │────▶│   Target DB │────▶│  Backup Set │
+│   Client    │     │  (Server    │     │  /Image Copy│
+│             │     │   Process)  │     │             │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                   │
+       │            ┌──────┴──────┐
+       │            │  Recovery   │
+       └───────────▶│   Catalog  │
+                    │   (선택)    │
+                    └─────────────┘
+ 
+ 
+ Rman Cllient
+ - 명령어 파싱 / Target DB에 Server Process 생성 지시
+ - Target DB Server Process가 실질적인 I/O 담당 (data file r/w, archive log r)
+ - channel=server process 1:1 대응 -> 채널을 2개이상 주면 2개이상의 서버프로세스가 생김
+ - 백업/복구 오케스트레이터
+ 
+ 
+ Target DB 
+ - Controlfile을 통해 백업 메타데이터 관리
+ - 별도의 catalog db 설정이 없다면 컨트롤파일이 카타로그 역할
+ 
+ DB 상태		가능한 RMAN 작업
+ ---------	-----------------
+ OPEN		백업, 아카이브 백업
+ MOUNT		복구, controlfile 복구
+ NOMOUNT	spfile, controlfile 복구
+ 
+ Control file 
+ - Rman의 기본 메타데이터 저장소 -> So 문제생기면 리커버리 어려울수도있음
+ - 이력 및 파일정보 / SCN / 아카이브 로그 이력 
+ - 장기관 이력 보관이 필요하면 Recovery Catalog 생성해서 사용 권장
+ 
+ 
+ channel - rman이 작업을 수행하는 백업 통로 ( 프로세스 )
+ - 실제 I/O 스트림이 일어남 / DIsk ,SBT(테이프/미디어) 지정 가능
+ 
+ 규모				Channel num		description
+------------------	------------	----------------------------------------------
+소규모 (100GB 미만)	 1~2개			단일 채널로도 충분히 빠르게 끝납니다.
+중규모 (100GB ~ 1TB)	 2~4개			CPU 코어 수의 1/2 수준이 적당합니다.
+대규모 (1TB 이상)	 4~8개 이상		디스크 I/O 처리 능력이 병목이 되지 않는 선에서 할당합니다.
+
+
+ Recovery Catalog
+ - Rman의 백업 메타데이터를 저장하는 별도의 관리용 DB -> controlfile너무 한정적이라 사용
+ 
+ rman target 'target_connection' catalog 'catalog_connection';
+ 
+ 
+ Bakcup 방식
+ 1. Backup set
+	- 데이터 블록만 골라서 저장하는 백업 방식
+	- BACKUP AS BACKUPSET database
+	- restore database -> recover database
+ 2. Image Copy
+	- 데이터파일을 os 파일 형태로 그대로 복사하는 백업 방식
+	- backup as copy database
+	- switch datafile to copy -> recover datafile;
+	 -> 이미 복사본이 있으므로 바로 전환가능
+ 3. 백업 저장소
+ 	DISK - 디스크 백업
+	SBT	 - 테이프 백업
+ 
+ 
+ 구분		Backup			Image Copy
+---------	-------------	------------
+저장 형태	RMAN 전용 포맷	OS 파일
+압축			가능				불가
+용량			작음				큼
+복구 속도	보통				빠름
+사람이 열기	불가				가능
+증분 백업	가능				불가
+
+
+
+Rman Backupset Backup & restore/recover
+ - backup targets : Datafile / Control file / spfile / archive log
+ 
+ backup set 종류
+ - full - 풀백업
+ - incr lv 0 - 증부 기준되는 full
+ - incr lv 1 - lv 0이후 변경된 블록만
+ - archivelog - 아카이브로그만
+ 
+
+🔹RMAN 백업 형식 비교
+구분				FULL 백업	Level 0 백업		Level 1 백업			IMAGE COPY
+----------------------------------------------------------------------------
+백업 범위		전체			전체				변경 블록만			전체
+증분 체계 참여	❌			⭕ (기준)		⭕					❌
+기준 백업 필요	❌			❌				⭕ (Level 0 필요)	❌
+백업 형식		BACKUPSET	BACKUPSET		BACKUPSET			IMAGE COPY
+데이터 저장 방식	RMAN 포맷	RMAN 포맷		RMAN 포맷			원본 그대로
+사용 블록만 백업	⭕			⭕				⭕					❌
+압축 가능		⭕			⭕				⭕					❌
+증분 가능		❌			⭕				⭕					❌
+복구 속도		보통			보통				느림					빠름			
+복구 복잡도		낮음			보통				높음					낮음
+단독 복구		⭕			⭕				❌					⭕
+즉시 전환		❌			❌				❌					⭕
+실무 사용도		중			매우 높음		매우 높음			낮음
+  
+  
+ - lv0 backup 
+ RUN {
+  BACKUP AS COMPRESSED BACKUPSET
+    INCREMENTAL LEVEL 0
+    DATABASE
+    TAG 'LV0_BASE';
+	}
+	
+ - lv1 backup
+ RUN {
+  BACKUP AS COMPRESSED BACKUPSET
+    INCREMENTAL LEVEL 1
+    DATABASE
+    TAG 'LV1_INC';
+	}
+	
+ - archive log backup
+	BACKUP AS COMPRESSED BACKUPSET
+  ARCHIVELOG ALL
+  DELETE INPUT;
+  
+ - 불완전 복구
+	-> REDO를 의도적으로 중간에 폐기하기때문에 복구후 오픈시 RESETLOGS 필수
+	-> PITR의 목적등으로 의도적으로 불완전 복구가능
+	-> 
+ 
+ 
+ - full Restore&Recovery
+   -> restore database;
+   -> recover database;
+   -> alter database open;
+   
+ - 특정 데이터파일 및 테이블 스페이스만 지정해서 복구 가능
+    - Datafile
+	-> alter database datafile n offline;
+	-> restore datafile n;
+	-> recover datafile n;
+	-> alter database datafile 7 online;
+	
+	- Tablespace
+	-> alter tablespace test offline;
+	-> restore tablespace test;
+	-> recover tablespace test;
+	-> alter tablespace test online;
+	
+	- Only Archive log
+	restore archivelog all;
+ 
+ - 불완전 복구 
+	-> 특정 SCN이나 시간값 지정해서 불완전 복구 지정가능
+		- run {
+		 set until time "to_date('2026-05-05 13:00:00', 'YYYY-MM-DD HH24:MI:SS')";
+		 restore database;
+		 recover database;}
+		- alter database open resetlogs;
+
+Rman ImageCopy Backup & restore/recover
+ -> 원본 그대로 1:1 복사하느 방식 / rman이긴한데 리눅스 cp와 크게 다르지 않음
+ 
+ - backup as copy database;
+ - backup as copy datafile 7; -> 특정 데이터파일만
+ - backup as copy current controlfile; -> 컨트롤 파일
+
+ - 복구절차는 종료후 mount start
+  - SWITCH DATAFILE 7 TO COPY; // online이면 offline 필요 // 특정 파일만 복구시 RESETLOGS 필요
+  - SWITCH DATAFILE TO COPY -> 파일 복사가 아니라 컨트롤 파일의 포인터만 바꾸는 작업이기에
+								리네임 작업등이 필요 (경로 완전히 맞추려면)
+  - RECOVER DATABASE; / RECOVER DATAFILE 7;
+  - ALTER DATABASE OPEN; /  ALTER DATABASE OPEN RESETLOGS;
+ 
+
+
+ 
+  Rman Command 
+	https://docs.google.com/spreadsheets/d/1pQXscwuh-LNUYINYZrDrxPo1hcYY5n32pqAGztM_afA/edit?gid=2085491127#gid=2085491127
+	
+	
+ 동
+
+
+  rman 환경설정 & 명령어 정리 & 
+  내부 작동 방식 user managaed backup과 비교해서
+  명령어 옵션별로도
