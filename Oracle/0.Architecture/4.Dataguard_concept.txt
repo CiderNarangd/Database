@@ -1,0 +1,200 @@
+DataGuard
+
+0.architecture
+
+- Dataguard? -> 오라클 데이터베이스 환경에서 사용되는 재해복구 및 고가용성 솔루션
+				실시간 동기화
+Standby Process
+	- NSSn -> NEtwork Server Sync Process
+		-> Sync / Maximum Avaliability, Maximum Protection, Farsync
+		-> Sync 전용 프로세스임
+		-> LGWR 계열
+		-> 현대 오라클에서 표준이라고 보면될듯/
+	
+	- TTnn -> Redo Transport Timer
+		-> Timeout 관리
+		-> transport scheduling 
+		-> async
+		-> network transport 관리
+		-> ARCn 계열
+ 
+ - failover - standby mrp 종료 및 최종 적용 -> standby를 primary로 전환
+			- 여러 standby를 사용중인 경우 tnsnames.ora에 페일오버 됐을시 사용될 primary 호스트까지 지정 가능
+ 
+ - Physical / logical / snapshot standby
+	- physical standby - 가장 일반적인 방식 primary의  redo데이터를 그대로 받아 물리적으로 동일하게 블록유지
+						- 재해복구, 리포트
+						- mount / read-only
+	- logical standby - redo를 sql로 변환하여 적용( Log miner package 활용)
+					  - 시간관련 함수 등 사용하면 값이 다를수가 있음.
+					  - open read/write
+					  
+	- snapshot standby - Physical Standby를 임시로 읽기/쓰기가 가능한 테스트 서버로 전환.
+					   - 운영전 테스트 등 / flashback 필수!
+					   - open read/write
+ 
+ - Active Dataguard & Normal Dataguard
+  -> standby서버가 복구 작업을 하는중에 데이터를 조회할수 있냐 없냐!
+  
+  -normal data guard
+   -> 기본 EE 포함
+   -> standby가 primary로부터 로그를 반영하는 동안 mount여야함
+   -> 조회하고 싶으면 mrp 중단하고 read only open
+   
+  active data guard
+   -> 별도로 비용 지불해야함
+   -> read only with apply
+
+ - far sync / 
+  -> redo로그만 받아서 잔달해 주는 중간 배달원
+  -> 물리적으로 너무 멀리 있는곳과 sync 운영시 성능 이슈 발생
+     네트워크 레이턴시가 거의 없는곳에 far sync서버를 둬서 sync 성능 극대화
+      farsync는 리두만 받아서 스토리지에 저장같은것 하지않고 async로 설정하고 다른 Standby서버에
+	  redo만 전달
+ 
+ - Real-Time Cascading
+  - 기존 cascading 구성은 primary->standby1->standby2가 리두로그가 즉시 계단식으로 전달되지 않았음,.
+    standby1이 arcive log까지 저장된 이후 stnadby2로 전송
+
+  - real-time cascading은 standby가 redo로그 수신 즉시 
+    primary -> standby1 -> standsby2
+	        디스크 write와 동시에 
+			stnadsby2로 redo 전송
+			
+  - primary에 stnadby가 여러대 붙어있으면 primary에 부하
+    primary에 부하를 줄이기 위해 cascading 구성  
+   
+   
+ - Dataguard Broker 
+  - Data guard 구성을 생성, 제어 및 모니터링 할수 있는 유틸리티(DGMGRL)
+  - Dmon Process -> far sync를 포함하여 브로커에서 관리하는 
+				모든 인스턴스에서 실행되는 오라클 백그라운드 프로세스
+  
+  - 양쪽 서버 오가면서 작업할 필요없이 해당 유틸리티로 가볍고 스위칭 작업 등 빠르게 가능
+  - 
+  
+  
+1. 사전 필수 체크리스트 
+- 아카이브 모드(Archive Mode): 필수 활성화
+- Force Logging: 필수 설정 (ALTER DATABASE FORCE LOGGING;)
+- DB_UNIQUE_NAME: Primary와 Standby는 반드시 서로 달라야 함
+- 기타 작업: Standby에 Password 파일 복사, Listener/Tnsnames 세팅, 서버 간 시간 동기화
+
+
+2. 핵심 초기화 파라미터 (Initialization Parameters)
+
+-- DG 환경에 속한 모든 DB_UNIQUE_NAME 정의
+ALTER SYSTEM SET log_archive_config = 'dg_config=(chicago,boston)' SCOPE=both;
+
+-- 갭(Gap) 복구용 서버 지정 (TNS Service Name 사용)
+-- Primary(chicago)에서는 'boston', Standby(boston)에서는 'chicago'로 교차 세팅
+ALTER SYSTEM SET fal_server = 'boston' SCOPE=both; 
+
+-- [주의] 12c 이후 Deprecated된 파라미터 (19c 등에서는 생략 가능)
+ALTER SYSTEM SET fal_client = 'chicago' SCOPE=both; 
+
+-- Standby의 데이터파일 및 리두로그 자동 관리
+ALTER SYSTEM SET standby_file_management = 'AUTO' SCOPE=both;
+
+아카이브 전송 경로 설정 (LOG_ARCHIVE_DEST_n)
+LOG_ARCHIVE_DEST_STATE_n 파라미터를 통해 사용할 경로들을 ENABLE 작업 해주어야함 
+(2~31까지 사용 가능하므로 최대 구성 가능한 Standby는 30개)
+
+-- 1. Local 아카이브 경로
+ALTER SYSTEM SET log_archive_dest_1 =
+  'location=use_db_recovery_file_dest
+   valid_for=(all_logfiles,all_roles)
+   db_unique_name=chicago' SCOPE=both;
+
+-- 2. Replication (Standby 전송) 경로
+ALTER SYSTEM SET log_archive_dest_2 =
+  'service=boston
+   async
+   valid_for=(online_logfiles,primary_role)
+   db_unique_name=boston' SCOPE=both;
+
+Standby (boston) 설정 예시
+log_archive_dest_2부터는 Primary와 반대로(Service와 Unique Name을 교차하여) 세팅합니다.
+
+
+3. Redo 전송 및 응답 옵션
+전송 방식 (SYNC / ASYNC)
+ - SYNC: Standby에서 ACK(응답)가 올 때까지 Primary가 커밋을 대기. 데이터 보호에 유리하지만 느림.
+ - ASYNC: Standby의 ACK를 기다리지 않고 즉시 커밋밋. 속도가 빠르지만 데이터 유실 가능성.
+
+응답 타이밍 (AFFIRM / NOAFFIRM)
+ - AFFIRM: Standby가 전송받은 리두를 디스크에 실제 기록해야 ACK를 반환. (SYNC 지정 시 디폴트)
+ - NOAFFIRM: Standby가 리두를 메모리(SGA)에 수신하기만 하면 ACK를 반환. (ASYNC 지정 시 디폴트)
+
+4. 데이터 보호 모드 (Protection Mode)
+보호 모드를 활성화하거나 변경하려면 반드시 그에 맞게 LOG_ARCHIVE_DEST_n 파라미터가 먼저 설정되어 있어야 합니다.
+
+-- 현재 보호 모드 확인
+SELECT PROTECTION_MODE, PROTECTION_LEVEL FROM V$DATABASE;
+
+ 1.Maximum Protection (최대 보호)
+  필수 옵션: SYNC + AFFIRM
+  특징: 대기 서버에서 응답이 오지 않으면 Primary가 Shutdown, 최고 수준의 데이터 보호를 제공하지만 대단히 느립니다.
+  변경 방법: DB 종료 후 MOUNT 상태에서 변경
+  
+  ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE PROTECTION;
+
+ 2. Maximum Availability (최대 가용성)
+	필수 옵션: SYNC + AFFIRM 또는 SYNC + NOAFFIRM
+	특징: 평소에는 동기식으로 작동하여 데이터를 보호하되, 
+		네트워크 장애 시 Primary 가동을 유지하는 타협 모드입니다.
+	변경 방법: DB 종료 후 MOUNT 상태에서 변경 가능
+
+	ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE AVAILABILITY;
+
+ 3. Maximum Performance (최대 성능)
+	필수 옵션: ASYNC + NOAFFIRM
+	- 존나빠름 commit 바로함. / but 손실이 있을수도있음.
+	- 해당 파라미터는 open상태에서 변경가능
+	ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE PERFORMANCE;
+
+
+5. Redo 셋팅 & Supplemental log 설정
+	기본적으로 primary redo group수 +1이 권장사항임
+	ALTER DATABASE ADD LOGFILE GROUP 10 ('/disk1/oradata/orl10.log') SIZE 200M; -> Orl
+	ALTER DATABASE ADD STANDBY LOGFILE GROUP 11 ('/disk1/oradata/srl11.log') SIZE 200M; -> srl
+
+	//need logical stand by
+	ALTER DATABASE ADD SUPPLEMENTAL LOG DATA; -> logical standby or swithing 1% 의 확률이라도 있으면 추가하는것이 권장사항)
+	ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;
+
+
+
+   
+ -- Logical Standby 전환 절차  
+ In Primary
+EXEC DBMS_LOGSTDBY.BUILD; 
+ALTER DATABASE RECOVER TO LOGICAL STANDBY newdb;   
+ALTER DATABASE OPEN RESETLOGS;
+
+ 
+//MRP - Managed Recovery Process - Phyiscal Standby
+In Physical Standby
+-- 아카이브 로그 기반 적용
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT;
+
+-- Online Redo log 기반 적용
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE DISCONNECT;
+
+--중지
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;		
+
+
+//LSP - Logical Standby Process - Logical Standby
+In Logical Standby
+-- 시작
+ALTER DATABASE START LOGICAL STANDBY APPLY;
+-- 중지
+ALTER DATABASE STOP LOGICAL STANDBY APPLY;
+
+
+
+
+==================================================================================
+
+
