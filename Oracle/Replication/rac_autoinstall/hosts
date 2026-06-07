@@ -1,0 +1,14 @@
+### Public
+192.168.56.11  racnode1
+192.168.56.12  racnode2
+192.168.56.13  racnode3
+### Virtual
+192.168.56.21 racnode1-vip
+192.168.56.22 racnode2-vip
+192.168.56.23 racnode3-vip
+### Scan
+192.168.56.10 rac-scan
+### Private
+192.168.10.11 racnode1-priv
+192.168.10.12 racnode2-priv
+192.168.10.13 racnode3-priv

@@ -1,7 +1,7 @@
 oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v19.0.0
-*INVENTORY_LOCATION=/u01/app/19.3.0/oraInventory
+*INVENTORY_LOCATION=/u01/app/oraInventory  -->이거고정임
 oracle.install.option=CRS_CONFIG
-*ORACLE_BASE=/u01/app/19.3.0/grid
+*ORACLE_BASE=/u01/app/grid
 oracle.install.asm.OSDBA=dba
 oracle.install.asm.OSOPER=dba
 oracle.install.asm.OSASM=dba

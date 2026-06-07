@@ -1,65 +1,24 @@
 #!/bin/bash
-# ============================================================
-#  Oracle 19c Auto Install Script _1
-#  OS   : OEL 7.9
-#  Mode : Grid RAC
-#  User : oracle / dba 
-#
-# /storage/downloads file check & need dir
-# mkdir -p /storage/downloads
-# chmod -R 777 /storage
-# 19cgrid, 19cengine zip 
-#
-# Script 실행전 공유 디스크 셋팅 및 파티셔닝 사전 설정 필수
-# Network Setting 사전 설정 필수
-#
-# 두번째 노드 머신은 첫번째 머신으로부터 복제해서 생성
-#
-# 양쪽 ssh 작업 필수
-# 해당 스크립트에서 oracle계정은 os 설치하면서 생성했다고 가정
-# 
-# ============================================================
-
+source /storage/downloads/common.sh
 
 # Global variables
 LOG=/storage/downloads/Pre_configured_$(date +%Y%m%d_%H%M%S).log
 
-GRID_ZIP=/storage/downloads/19c_grid_linux.zip
-ORACLE_ZIP=/storage/downloads/19c_db_linux.zip
-
 
 # ============================================================
-# Functions
-# ============================================================
-#log()  { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
-#die()  { echo "[ERROR] $*" | tee -a "$LOG"; exit 1; }
-
-log()  { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; echo "" | tee -a "$LOG"; }
-die()  { echo "" | tee -a "$LOG"; echo "[ERROR] $*" | tee -a "$LOG"; exit 1; }
-newline() { echo "" | tee -a "$LOG"; }
-
-run_as_oracle() { 
-	su - oracle -c "$1" 2>&1 | tee -a "$LOG";
-	}
-	
-run_as_grid() { 
-	su - grid -c "$1" 2>&1 | tee -a "$LOG";
-	}
- 
-# ============================================================
-# [1] root Check
+# root Check
 # ============================================================
 [[ $EUID -ne 0 ]] && die "Must Excute Root."
-log "=== Start RAC Auto Installer Part1 - GRID"
+log "=== Start RAC Auto Installer Part1 - Congigure"
 echo -e "\n"
 
 # ============================================================
-# [2] File Check
+# File Check
 # ============================================================
 
-#Test
-touch /storage/downloads/19c_db_linux.zip
-touch /storage/downloads/19c_grid_linux.zip
+# Test
+ touch /storage/downloads/19c_db_linux.zip
+ touch /storage/downloads/19c_grid_linux.zip
 
 [ -f "$GRID_ZIP" ]   || die "Grid zip not found: $GRID_ZIP"
 [ -f "$ORACLE_ZIP" ] || die "Oracle zip not found: $ORACLE_ZIP"
@@ -69,7 +28,6 @@ touch /storage/downloads/19c_grid_linux.zip
 # [2] OS 패키지 설치
 # ============================================================
 log "[STEP 1] Install OS Package "
-
 
 yum install -y oracle-database-preinstall-19c 2>&1 | tee -a "$LOG" || die "Failed Install Preinstall Package.."
 echo -e "\n"
@@ -89,10 +47,12 @@ echo -e "\n"
 ## Change ntpd option change
 
 #ntpd enable & start / Change option
+log "Set NTPD Option & systemctl set"
 sed -i 's/^OPTIONS=.*/OPTIONS="-g -x"/' /etc/sysconfig/ntpd 2>&1 | tee -a "$LOG"
 systemctl enable ntpd && systemctl start ntpd
 
 #Kill Avahi daemon
+log "kill & disable avahi-daemon"
 systemctl disable avahi-daemon && systemctl stop avahi-daemon
 
 # ============================================================
@@ -119,15 +79,19 @@ log "Make Grid & Oracle Direcstory"
 #u01 - grid
 #u02 - oracle
 
-mkdir -p /u01/app/19.3.0/grid 		  #ORACLE_HOME
-mkdir -p /u01/app/grid				  #ORACLE_BASE  	
+GRID_HOME=/u01/app/19.3.0/grid
+GRID_BASE=/u01/app/grid
+
+ORACLE_BASE=/u02/app/oracle
+
+mkdir -p ${GRID_HOME} 		  			#ORACLE_HOME
+mkdir -p ${GRID_BASE}				  	#ORACLE_BASE  	
 chown -R grid:dba /u01
 chmod -R 775 /u01
 
-mkdir -p /u02/app/oracle			  #ORACLE_BASE
-mkdir -p /u02/app/oraInventory
+mkdir -p ${ORACLE_BASE}			  		#ORACLE_BASE
 chown -R oracle:dba /u02
-chmod -R 775 /u02/app
+chmod -R 775 /u02
 
 
 ## ============================================================
@@ -137,28 +101,19 @@ chmod -R 775 /u02/app
 # Func Test
 log "[STEP] Configure /etc/hosts"
 cp /etc/hosts /etc/hosts.bak
-cat >> /etc/hosts << 'EOF'
 
-### Public
-192.168.56.10   oel7rac1       
-192.168.56.11   oel7rac2       
-
-### Virtual
-192.168.56.20   oel7rac1-vip   
-192.168.56.21   oel7rac2-vip   
-### Scan
-192.168.56.100  oel7rac-scan 
-
-### Private
-192.168.10.11  oel7rac1-priv
-192.168.10.12  oel7rac2-priv
-EOF
+if [ -f "$HOSTS_FILE" ]; then
+    cat "$HOSTS_FILE" >> /etc/hosts
+else
+    echo "ERROR: $HOSTS_FILE not found"
+    exit 1
+fi
 
 cat /etc/hosts | tee -a "$LOG"
 
 echo -e "\n"
 
-hostnamectl set-hostname oel7rac1 2>&1 | tee -a "$LOG"				
+# hostnamectl set-hostname oel7rac1 2>&1 | tee -a "$LOG"				
 hostnamectl status 2>&1 | tee -a "$LOG"
 echo -e "\n"
 
@@ -187,5 +142,5 @@ EOF
 tail -20 /etc/security/limits.conf | tee -a "$LOG"
 
 newline
-log "Restart the Host"
+log "Next is Clone Machine / Network&Hostname Setting / Shared Storage Setting"
 
