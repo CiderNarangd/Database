@@ -1,0 +1,257 @@
+DNS Server
+
+Dns 패키지 
+
+
+yum install -y bind bind-utils
+cp /etc/named.conf /etc/named.conf.bak
+
+vi /etc/named.conf
+
+========================================================
+
+options {
+        listen-on port 53 { any; };
+        listen-on-v6 port 53 { none; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        recursing-file  "/var/named/data/named.recursing";
+        secroots-file   "/var/named/data/named.secroots";
+        allow-query     { any; };
+
+        recursion yes;
+
+        dnssec-enable no;
+        dnssec-validation no;
+
+        /* Path to ISC DLV key */
+        bindkeys-file "/etc/named.root.key";
+
+        managed-keys-directory "/var/named/dynamic";
+
+        pid-file "/run/named/named.pid";
+        session-keyfile "/run/named/session.key";
+};
+
+logging {
+        channel default_debug {
+                file "data/named.run";
+                severity dynamic;
+        };
+};
+
+zone "rac.local" IN {
+        type master;
+        file "rac.local.zone";
+};
+
+zone "18.16.172.in-addr.arpa" IN {
+        type master;
+        file "rac.local.rev";
+};
+
+
+zone "." IN {
+        type hint;
+        file "named.ca";
+};
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+
+
+
+========================================================
+
+
+//정방향존
+vi /var/named/rac.local.zone
+
+=================================
+
+$TTL 86400
+
+@       IN SOA dns.rac.local. root.rac.local. (
+        2025060501
+        3600
+        1800
+        604800
+        86400 )
+
+@       IN NS dns.rac.local.
+
+dns     IN A 172.16.18.21
+
+rac1    IN A 172.16.18.51
+rac2    IN A 172.16.18.52
+
+rac1-vip IN A 172.16.18.53
+rac2-vip IN A 172.16.18.54
+
+scan    IN A 172.16.18.50
+scan    IN A 172.16.18.60
+scan    IN A 172.16.18.70
+
+=============================================
+
+
+//역방향존
+vi /var/named/rac.local.rev
+
+=================================
+
+$TTL 86400
+
+@ IN SOA dns.rac.local. root.rac.local. (
+        2025060501
+        3600
+        1800
+        604800
+        86400 )
+
+@ IN NS dns.rac.local.
+
+21 IN PTR dns.rac.local.
+
+51 IN PTR rac1.rac.local.
+52 IN PTR rac2.rac.local.
+
+53 IN PTR rac1-vip.rac.local.
+54 IN PTR rac2-vip.rac.local.
+
+50 IN PTR scan.rac.local.
+60 IN PTR scan.rac.local.
+70 IN PTR scan.rac.local.
+
+=============================================
+
+
+//권한변경
+chown root:named /var/named/rac.local*
+chmod 640 /var/named/rac.local*
+
+
+//zone file systax check
+[root@boston-srv ~]# named-checkzone rac.local /var/named/rac.local.zone
+zone rac.local/IN: loaded serial 2025060501
+OK
+
+[root@boston-srv ~]# named-checkzone 18.16.172.in-addr.arpa /var/named/rac.local.rev
+zone 18.16.172.in-addr.arpa/IN: loaded serial 2025060501
+OK
+
+
+systemctl disable named
+systemctl start named
+systemctl status named
+systemctl stop named
+systemctl restart named
+
+systemctl stop dnsmasq
+systemctl disable dnsmasq
+
+
+ss -tulpn | grep :53
+[root@boston-srv ~]# ss -tulpn | grep :53
+udp    UNCONN     0      0         *:5353           *:*    users:(("avahi-daemon",pid=1034,fd=12))
+udp    UNCONN     0      0      192.168.122.1:53    *:*    users:(("named",pid=7902,fd=532),("named",pid=7902,fd=531),("named",pid=7902,fd=530),("named",pid=7902,fd=529),("named",pid=7902,fd=528),("named",pid=7902,fd=527),("named",pid=7902,fd=526))
+udp    UNCONN     0      0      172.16.18.21:53     *:*    users:(("named",pid=7902,fd=525),("named",pid=7902,fd=524),("named",pid=7902,fd=523),("named",pid=7902,fd=522),("named",pid=7902,fd=521),("named",pid=7902,fd=520),("named",pid=7902,fd=519))
+udp    UNCONN     0      0      127.0.0.1:53        *:*    users:(("named",pid=7902,fd=518),("named",pid=7902,fd=517),("named",pid=7902,fd=516),("named",pid=7902,fd=515),("named",pid=7902,fd=514),("named",pid=7902,fd=513),("named",pid=7902,fd=512))
+udp    UNCONN     0      0      192.168.122.1:53    *:*    users:(("dnsmasq",pid=2505,fd=5))
+tcp    LISTEN     0      10     172.16.18.21:53     *:*    users:(("named",pid=7902,fd=22))
+tcp    LISTEN     0      10     127.0.0.1:53        *:*    users:(("named",pid=7902,fd=21))
+tcp    LISTEN     0      5      192.168.122.1:53    *:*    users:(("dnsmasq",pid=2505,fd=6))
+
+
+
+
+nslookup rac1.rac.local 127.0.0.1
+
+
+[root@boston-srv ~]# nslookup scan
+Server:         172.16.18.21
+Address:        172.16.18.21#53
+
+Name:   scan.rac.local
+Address: 172.16.18.70
+Name:   scan.rac.local
+Address: 172.16.18.50
+Name:   scan.rac.local
+Address: 172.16.18.60
+
+
+
+
+rac1 rac2
+
+//dns hosts 
+vi /etc/resolv.conf
+=======================================
+
+search rac.local
+nameserver 172.16.18.21
+
+=====================================
+
+//rac1,2 hosts
+
+vi /etc/resolv.conf
+
+======================================
+
+# 모든 RAC 노드의 /etc/resolv.conf 내용
+search rac.local
+nameserver 172.16.18.21
+nameserver 8.8.8.8       #외부필요없으면 지워 
+
+========================================
+
+vi /etc/hosts -> scan ip 정리
+
+
+
+rac node들
+cat /etc/hosts
+
+# Public IP
+172.16.18.51   rac1.rac.local   rac1
+172.16.18.52   rac2.rac.local   rac2
+
+# Virtual IP (VIP)
+172.16.18.53   rac1-vip.rac.local   rac1-vip
+172.16.18.54   rac2-vip.rac.local   rac2-vip
+
+# Private IP (Interconnect 대역은 보통 별도 사설망 분리)
+172.16.25.51    rac1-priv
+172.16.25.52   rac2-priv
+
+
+
+
+tns samples
+
+-----------------------------
+
+ORA19C_RAC =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (LOAD_BALANCE = yes)
+      (FAILOVER = yes)
+      (ADDRESS = (PROTOCOL = TCP)(HOST = scan.rac.local)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = ora19)  # ⚠️ 실제 RAC DB의 Service Name을 적어주세요.
+    )
+  )
+  
+  
+  scan.rac.local
+  -> 자신의 hosts의 /etc/hosts 참조
+  -> 없으면 /etc/resolv.conf에서 참조 > nameserver 172.16.18.21 확인
+  -> DNS 서버(boston-srv) ──> "scan IP는 172.16.18.50 이야" (라운드 로빈)
+  -> CAN 리스너(172.16.18.50) 접속 ──> "지금 Node2가 한가하니까 거기로 가" (리다이렉트)
+  ->  Node2 로컬 리스너(VIP: 172.16.18.54) ──> [최종 DB 인스턴스 연결 완료]
+  
