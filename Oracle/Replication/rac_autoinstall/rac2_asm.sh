@@ -47,11 +47,15 @@ log "grid Account ssh set "
 # ==============================
 
 log "oracleasm configure start.."
+
+echo "" >> ${HOSTS_LIST} # 강제 개행 추가
+
+
 NODE_NUM=1
 while read -r HOSTNAME <&3
 do
 	echo "NODE ${NODE_NUM} config start"
-		
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		/usr/sbin/oracleasm configure -u grid -g dba -e -b -s y | tee -a "$LOG"
 	else
@@ -70,7 +74,7 @@ while read -r HOSTNAME <&3
 do
 
 	echo "NODE ${NODE_NUM} init start"
-
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		/usr/sbin/oracleasm init  | tee -a "$LOG"
 	else
@@ -116,7 +120,7 @@ NODE_NUM=1
 while read -r HOSTNAME <&3
 do
 	echo "NODE ${NODE_NUM} scan start"
-
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		oracleasm scandisks | tee -a "$LOG"
 	else
@@ -132,7 +136,7 @@ while read -r HOSTNAME <&3
 do
 
 	echo "NODE ${NODE_NUM} list start"
-
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		oracleasm listdisks | tee -a "$LOG"
 	else

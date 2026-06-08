@@ -42,11 +42,18 @@ Instance생성은 DBCA로 archive mode 기본으로 설정 및 아카이브 모�
 chmod +x /storage/downloads/*.sh
 chown -R root:root /storage/downloads/*.sh
 
+hostnamectl set-hostname racnode1
+hostnamectl set-hostname racnode2
+hostnamectl set-hostname racnode3
+..
+..
+
+
 # File List
  - ReadME.txt
  - Common.sh       --> 여기에 공용변수&함수 셋팅해야할값 몰아서 넣자
  - rac1_config.sh
- - rac2_manual_task.sh
+ - rac2_asm.sh
  - rac3_grid.sh
  - rac4_oracle.sh
  - rac5_dbca.sh

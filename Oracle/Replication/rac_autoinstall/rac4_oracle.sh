@@ -28,7 +28,7 @@ NODE_NUM=1
 
 while read -r HOSTNAME <&3
 do
-
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
         run_as_oracle "mkdir -p ${ORACLE_HOME}"
 		chown -R oracle:dba /u02
@@ -69,7 +69,7 @@ NODE_NUM=1
 
 while read -r HOSTNAME <&3
 do
-
+	[ -z "$HOSTNAME" ] && continue
     cat > /tmp/oracle_profile << EOF
 # .bash_profile
 
@@ -128,6 +128,7 @@ log "========================================"
 NODE_NUM=1
 while read -r HOSTNAME <&3
 do
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		log "Run Root Script [root.sh] rac${NODE_NUM} node"
 		[[ -x "${ORACLE_HOME}/root.sh" ]] || die "root.sh not found in rac${NODE_NUM} node : ${ORACLE_HOME}/root.sh"

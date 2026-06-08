@@ -102,6 +102,8 @@ chmod -R 775 /u02
 log "[STEP] Configure /etc/hosts"
 cp /etc/hosts /etc/hosts.bak
 
+echo "" >> ${HOSTS_FILE} # 강제 개행 추가
+
 if [ -f "$HOSTS_FILE" ]; then
     cat "$HOSTS_FILE" >> /etc/hosts
 else

@@ -51,6 +51,7 @@ NODE_NUM=1
 
 while read -r HOSTNAME <&3
 do
+	[ -z "$HOSTNAME" ] && continue
 
     cat > /tmp/grid_profile << EOF
 # .bash_profile
@@ -105,6 +106,8 @@ NODE_NUM=1
 log "Run Root Script [oraInstRoot.sh] Start"
 while read -r HOSTNAME <&3
 do
+	
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		log "Run Root Script [orainstRoot.sh] rac${NODE_NUM} node"
 		[[ -x "${ORA_INVEN}/orainstRoot.sh" ]] || die "orainstRoot.sh not found in rac1 node : ${ORA_INVEN}/orainstRoot.sh"
@@ -129,6 +132,7 @@ log "Run Root Script [root.sh] Start.."
 NODE_NUM=1
 while read -r HOSTNAME <&3
 do
+	[ -z "$HOSTNAME" ] && continue
 	if [ "$NODE_NUM" -eq 1 ]; then
 		log "Run Root Script [root.sh] rac${NODE_NUM} node"
 		[[ -x "${GRID_HOME}/root.sh" ]] || die "root.sh not found in rac1 node : ${GRID_HOME}/root.sh"

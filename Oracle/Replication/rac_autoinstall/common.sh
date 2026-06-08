@@ -4,6 +4,8 @@
 
 GRID_ZIP=/storage/downloads/19c_grid_linux.zip
 ORACLE_ZIP=/storage/downloads/19c_db_linux.zip
+SSH_SCRIPT=/storage/downloads/sshUserSetup.sh
+
 
 ORA_INVEN=/u01/app/oraInventory
 GRID_HOME=/u01/app/19.3.0/grid
