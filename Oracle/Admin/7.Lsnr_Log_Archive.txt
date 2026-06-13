@@ -1,0 +1,53 @@
+리스너 로그 아카이빙
+
+ - 오라클에서 리스너의 상태 / 클라이언트 접속 요청 / 오류등을 기록하는 파일
+ - 서비스가 길어지다보면 용량이 많이 쌓일수 있으니 주기적으로 아카이빙이 필요
+ - 로그 아카이빙전에 그리드 디렉토리에 리스너를 사용하는지, 
+	오라클 디렉토리에 있는 리스너를 사용하는지 확인필요
+   
+$ $ORACLE_BASE/diag/tnslsnr/<hostname>/<listener_name>/alert/log.xml
+$ $ORACLE_BASE/diag/tnslsnr/<hostname>/<listener_name>/trace/listener.log
+
+-> listener.log가 용량 사용하는 주범
+-> log.xml을 adrci정책으로 관리 가능
+
+
+
+archive_lsnrlog.sh lsnr_name
+
+0 0 * * 0 /home/oracle/scripts/archive_listener_log.sh 
+0 0 * * 0 /home/oracle/scripts/archive_listener_log.sh 리스너이름
+
+==================================
+
+#!/bin/bash
+
+LISTENER_NAME="${1:-LISTENER}"
+
+ORACLE_HOME="${ORACLE_HOME:-/u01/app/oracle/product/19.3.0/dbhome_1}"
+LSNRCTL="${ORACLE_HOME}/bin/lsnrctl"
+HOST=$(hostname -s)
+KEEP_DAYS=5
+
+LSNR_TRACE="${ORACLE_BASE:-/u01/app/oracle}/diag/tnslsnr/${HOST}/${LISTENER_NAME,,}"
+TRACE_DIR="${LSNR_TRACE}/trace"
+ARCH_DIR="${TRACE_DIR}/archive"
+
+TIMESTAMP=$(date +%Y%m%d)
+
+mkdir -p "${ARCH_DIR}"
+ 
+"${LSNRCTL}" set log_status off 
+
+mv "${TRACE_DIR}/listener.log" "${ARCH_DIR}/listener_${TIMESTAMP}.log" 
+
+"${LSNRCTL}" set log_status on  
+
+find "${ARCH_DIR}" -name "listener_*.log*" -mtime +${KEEP_DAYS} -delete
+
+
+============================================
+
+* 오라클 리스너 / 그리너 리스너 확인필요
+* 필요시 로그 추가
+* 
