@@ -1,131 +1,201 @@
 use [LOG]
--- È®Àå¼º °í·ÁÇÏ¿© Ãß°¡ÄÃ·³ ¹Ì¸® »ı¼ºÇØ³õÀ»¼öµµ ÀÖÀ½
--- ¿ù´ÜÀ§ Å×ÀÌºí ÀÛ¼º or ÆÄÆ¼¼Å´×ÇÏ¿© °ü¸®
+-- í™•ì¥ì„± ê³ ë ¤í•˜ì—¬ ì¶”ê°€ì»¬ëŸ¼ ë¯¸ë¦¬ ìƒì„±í•´ë†“ì„ìˆ˜ë„ ìˆìŒ
+-- ì›”ë‹¨ìœ„ í…Œì´ë¸” ì‘ì„± or íŒŒí‹°ì…”ë‹í•˜ì—¬ ê´€ë¦¬
 create table login_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,
 	user_idx bigint not null,
-	login_date datetime not null,										-- ·Î±×ÀÎ ½Ã°£
-	last_login_date datetime not null,									-- Áö³­ ·Î±×ÀÎ ½Ã°£
-	[login_type] tinyint not null,										-- 0 - Google, 1 - Apple Login, 2 - MS, 3 - ³×ÀÌ¹ö.... , 99-°Ô½ºÆ®
-	os_version nvarchar(50)	not null default'zz',						-- os ¹öÀü
-	device_name nvarchar(50) not null default 'zz',						-- ±â±â¸í
-	country_code char(3) not null default 'zz',							-- ±¹°¡ÄÚµå
-	created_date datetime not null default getdate()					-- ·Î±× »ğÀÔÀÏ
+	login_date datetime not null,										-- ë¡œê·¸ì¸ ì‹œê°„
+	last_login_date datetime not null,									-- ì§€ë‚œ ë¡œê·¸ì¸ ì‹œê°„
+	[login_type] tinyint not null,										-- 0 - Google, 1 - Apple Login, 2 - MS, 3 - ë„¤ì´ë²„.... , 99-ê²ŒìŠ¤íŠ¸
+	os_version nvarchar(50)	not null default'zz',						-- os ë²„ì „
+	device_name nvarchar(50) not null default 'zz',						-- ê¸°ê¸°ëª…
+	country_code char(3) not null default 'zz',							-- êµ­ê°€ì½”ë“œ
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì…ì¼
 )
 
--- °áÁ¦°¡ Á¤»óÀûÀ¸·Î ¿Ï·áµÈ ·Î±×¸¸ »ğÀÔµÈ´Ù.
+CREATE INDEX ix_login_created_date ON login_log(created_date)			-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_login_user_idx ON login_log(user_idx,created_date)		-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+-- ê²°ì œê°€ ì •ìƒì ìœ¼ë¡œ ì™„ë£Œëœ ë¡œê·¸ë§Œ ì‚½ì…ëœë‹¤.
 create table billing_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	login_date datetime not null,										-- ·Î±×ÀÎ ½Ã°£
-	os_version nvarchar(50)	not null default'zz',						-- OS¸í
-	device_name nvarchar(50) not null default 'zz',						-- ±â±â¸í
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	login_date datetime not null,										-- ë¡œê·¸ì¸ ì‹œê°„
+	os_version nvarchar(50)	not null default'zz',						-- OSëª…
+	device_name nvarchar(50) not null default 'zz',						-- ê¸°ê¸°ëª…
 	market_type tinyint not null,										-- 0 - Google, 1 - AppStore ....
-	product_id int not null,											-- »óÇ°id
-	amount decimal(10,2) not null,										-- ±¸¸Å°¡°İ
-	currency nvarchar(5) not null default 'zz',							-- ÅëÈ­
-	bill_start_date datetime not null,									-- °áÁ¦ ½ÃÀÛ ½Ã°£
-	bill_end_date datetime not null,									-- °áÁ¦ ¿Ï·á ½Ã°£
-	created_date datetime not null default getdate()					-- ·Î±× »ğÀÔ ½Ã°£
-)
+	product_id int not null,											-- ìƒí’ˆid
+	amount decimal(10,2) not null,										-- êµ¬ë§¤ê°€ê²©
+	currency nvarchar(5) not null default 'zz',							-- í†µí™”
+	bill_start_date datetime not null,									-- ê²°ì œ ì‹œì‘ ì‹œê°„
+	bill_end_date datetime not null,									-- ê²°ì œ ì™„ë£Œ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
+) 
+
+CREATE INDEX ix_bill_created_date ON billing_log(created_date)			-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_bill_user_idx ON billing_log(user_idx,created_date)		-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+
 
 create table quest_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,				
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	login_date datetime not null,										-- ·Î±×ÀÎ ½Ã°£
- 	quest_id int not null,												-- Äù½ºÆ®id
-	completed_date  datetime not null,									-- ¿Ï·á½Ã°£
-	created_date datetime not null,										-- ·Î±× »ğÀÔ ½Ã°£
-)
-create table match_log(
-	seq_key bigint IDENTITY (1, 1) not null primary key,				
-	season_idx int not null,											-- ½ÃÁğ ÀÎµ¦½º
-	user1_idx bigint not null,											-- À¯Àú1 °íÀ¯°ª
-	user2_idx bigint not null,											-- À¯Àú2 °íÀ¯°ª
-	user1_score int not null											-- À¯Àú1 º¯µ¿ Á¡¼ö
-	user2_score int not null											-- À¯Àú2 º¯µ¿ Á¡¼ö
-	user1_before_score int not null										-- À¯Àú1 °æ±â ÀÌÀü Á¡¼ö
-	user1_before_score int not null										-- À¯Àú2 °æ±â ÀÌÀü Á¡¼ö
-	user1_after_score int not null										-- À¯Àú1 °æ±â ÀÌÈÄ Á¡¼ö
-	user1_after_score int not null										-- À¯Àú2 °æ±â ÀÌÈÄ Á¡¼ö
-	user1_info nvarchar(300) not null,									-- À¯Àú1 Àåºñ, ½ºÅ³ Á¤º¸
-	user2_info nvarchar(300) not null,									-- À¯Àú2 Àåºñ, ½ºÅ³ Á¤º¸
-	match_time int not null,											-- °ÔÀÓ ½Ã°£
-	mastch_start_date datetime not null,								-- °ÔÀÓ ½ÃÀÛ ½Ã°£
-	match_end_date datetime not null,									-- °ÔÀÓ Á¾·á ½Ã°£
-	created_date datetime not null default getdate()					-- ·Î±× »ğÀÔ ½Ã°£
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	login_date datetime not null,										-- ë¡œê·¸ì¸ ì‹œê°„
+ 	quest_id int not null,												-- í€˜ìŠ¤íŠ¸id
+	completed_date  datetime not null,									-- ì™„ë£Œì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
 )
 
-create table item_log(
-	seq_key bigint IDENTITY (1, 1) not null primary key,					
-	user_idx bigint not null,											-- À¯Àú °íÀ¯ °ª
-	event_type tinyint not null,										-- È¹µæ/»ç¿ë °æ·Î ( ±¸¸Å, ¿ìÆíÇÔ, ±âºÎ, ....  )
-	item_id int not null,												-- ¾ÆÀÌÅÛid
-	item_cate tinyint not null,											-- ¾ÆÀÌÅÛ Ä«Å×°í¸® ( Àåºñ, ¼Ò¸ğÇ° ....)
-	quantity_change int not null,										-- »ç¿ë/È¹µæ °¹¼ö
-	before_quantity int not null,										-- È¹µæ/»ç¿ë Àü ³²Àº °¹¼ö  (ÀåºñÅÛÀº 0À¸·Î Ã³¸®)
-	after_quantity int not null,										-- È¹µæ/»ç¿ë ÈÄ ³²Àº °¹¼ö  (ÀåºñÅÛÀº 0À¸·Î Ã³¸®,)
-	option1_id int not null,											-- ¿É¼Ç1 id
-	option1_value int not null,											-- ¿É¼Ç1 value							
-	option2_id int not null ,											-- ¿É¼Ç2 id
-	option2_value int not null,											-- ¿É¼Ç2 value
-	option3_id int not null,											-- ¿É¼Ç3 id
-	option3_value int not null,											-- ¿É¼Ç3 value
-	option4_id int not null,											-- ¿É¼Ç4 id
-	option4_value int not null,											-- ¿É¼Ç4 value
-	option5_id int not null,											-- ¿É¼Ç5 id
-	option5_value int not null,											-- ¿É¼Ç5 value
-	changed_date datetime not null,										-- »ç¿ë/È¹µæ ½Ã°£
-	created_date datetime not null default getdate()					-- ·Î±× »ğÀÔ ½Ã°£
+CREATE INDEX ix_quest_created_date ON quest_log(created_date)			-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_quest_user_idx ON quest_log(user_idx,created_date)		-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+create table match_log(
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	match_idx bigint not null,											-- ë§¤ì¹˜ ê³ ìœ ê°’
+	season_idx int not null,											-- ì‹œì¦Œ ì¸ë±ìŠ¤
+	user1_idx bigint not null,											-- ìœ ì €1 ê³ ìœ ê°’
+	user2_idx bigint not null,											-- ìœ ì €2 ê³ ìœ ê°’
+	user1_score int not null,											-- ìœ ì €1 ë³€ë™ ì ìˆ˜
+	user2_score int not null,											-- ìœ ì €2 ë³€ë™ ì ìˆ˜
+	user1_before_score int not null,									-- ìœ ì €1 ê²½ê¸° ì´ì „ ì ìˆ˜
+	user2_before_score int not null,									-- ìœ ì €2 ê²½ê¸° ì´ì „ ì ìˆ˜
+	user1_after_score int not null,										-- ìœ ì €1 ê²½ê¸° ì´í›„ ì ìˆ˜
+	user2_after_score int not null,										-- ìœ ì €2 ê²½ê¸° ì´í›„ ì ìˆ˜
+	user1_info nvarchar(300) not null,									-- ìœ ì €1 ì¥ë¹„, ìŠ¤í‚¬ ì •ë³´
+	user2_info nvarchar(300) not null,									-- ìœ ì €2 ì¥ë¹„, ìŠ¤í‚¬ ì •ë³´
+	match_time int not null,											-- ê²Œì„ ì‹œê°„
+	match_start_date datetime not null,									-- ê²Œì„ ì‹œì‘ ì‹œê°„
+	match_end_date datetime not null,									-- ê²Œì„ ì¢…ë£Œ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
 )
+
+CREATE INDEX ix_match_created_date ON match_log(created_date)			-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_match_user1_idx ON match_log(user1_idx,created_date)	-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_match_user2_idx ON match_log(user2_idx,created_date)	
+CREATE INDEX ix_match_match_idx ON match_log(match_idx)					-- íŠ¹ì • ë§¤ì¹˜ ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+
+create table equip_item_log(
+	seq_key bigint IDENTITY (1, 1) not null primary key,					
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ  ê°’
+	event_type tinyint not null,										-- íšë“/ì‚¬ìš© ê²½ë¡œ ( êµ¬ë§¤, ìš°í¸í•¨, ê¸°ë¶€, ....  )
+	item_id int not null,												-- ì•„ì´í…œid
+	item_cate tinyint not null,											-- ì•„ì´í…œ ì¹´í…Œê³ ë¦¬ ( ì¥ë¹„, ì†Œëª¨í’ˆ ....)
+	quantity_change int not null,										-- ì‚¬ìš©/íšë“ ê°¯ìˆ˜
+	before_quantity int not null,										-- íšë“/ì‚¬ìš© ì „ ë‚¨ì€ ê°¯ìˆ˜  (ì¥ë¹„í…œì€ 0ìœ¼ë¡œ ì²˜ë¦¬)
+	after_quantity int not null,										-- íšë“/ì‚¬ìš© í›„ ë‚¨ì€ ê°¯ìˆ˜  (ì¥ë¹„í…œì€ 0ìœ¼ë¡œ ì²˜ë¦¬,)
+	option1_id int not null,											-- ì˜µì…˜1 id
+	option1_value int not null,											-- ì˜µì…˜1 value							
+	option2_id int not null ,											-- ì˜µì…˜2 id
+	option2_value int not null,											-- ì˜µì…˜2 value
+	option3_id int not null,											-- ì˜µì…˜3 id
+	option3_value int not null,											-- ì˜µì…˜3 value
+	option4_id int not null,											-- ì˜µì…˜4 id
+	option4_value int not null,											-- ì˜µì…˜4 value
+	option5_id int not null,											-- ì˜µì…˜5 id
+	option5_value int not null,											-- ì˜µì…˜5 value
+	changed_date datetime not null,										-- ì‚¬ìš©/íšë“ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
+)
+
+CREATE INDEX ix_equip_craete_date ON equip_item_log(created_date)			-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_equip_user_idx ON equip_item_log(user_idx,created_date)		-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+
 
 create table goods_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,					
-	user_idx bigint not null,											-- À¯Àú °íÀ¯ °ª
-	event_type tinyint not null,										-- È¹µæ/»ç¿ë °æ·Î ( ±¸¸Å, ¿ìÆíÇÔ, ±âºÎ, ....  )
-	product_id int not null,											-- ÀçÈ­ »ç¿ëÀ¸·Î È¹µæÇÑ ¾ÆÀÌÅÛ id
-	product_quantity int not null,										-- È¹µæÇÑ ¾ÆÀÌÅÛ °¹¼ö
-	free_goods_change int not null,										-- ¹«·á ÀçÈ­ º¯È­·®		
-	paid_goods_change int not null,										-- À¯·á ÀçÈ­ º¯È­·®
-	before_free_goods int not null,										-- ¹«·á ÀçÈ­ º¯µ¿Àü 
-	before_paid_goods int not null,										-- À¯·á ÀçÈ­ º¯µ¿Àü
-	after_free_goods int not null,										-- ¹«·á ÀçÈ­ º¯µ¿ÈÄ
-	after_paid_goods int not null,										-- À¯·á ÀçÈ­ º¯µ¿ÈÄ
-	changed_date datetime not null,										-- ÀÌº¥Æ® ¹ß»ı ½Ã°£
-	created_date datetime not null default getdate()				    -- ·Î±× »ğÀÔ ½Ã°£
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ  ê°’
+	event_type tinyint not null,										-- íšë“/ì‚¬ìš© ê²½ë¡œ ( êµ¬ë§¤, ìš°í¸í•¨, ê¸°ë¶€, ....  )
+	product_id int not null,											-- ì¬í™” ì‚¬ìš©ìœ¼ë¡œ íšë“í•œ ì•„ì´í…œ id
+	product_quantity int not null,										-- íšë“í•œ ì•„ì´í…œ ê°¯ìˆ˜
+	free_goods_change int not null,										-- ë¬´ë£Œ ì¬í™” ë³€í™”ëŸ‰		
+	paid_goods_change int not null,										-- ìœ ë£Œ ì¬í™” ë³€í™”ëŸ‰
+	before_free_goods int not null,										-- ë¬´ë£Œ ì¬í™” ë³€ë™ì „ 
+	before_paid_goods int not null,										-- ìœ ë£Œ ì¬í™” ë³€ë™ì „
+	after_free_goods int not null,										-- ë¬´ë£Œ ì¬í™” ë³€ë™í›„
+	after_paid_goods int not null,										-- ìœ ë£Œ ì¬í™” ë³€ë™í›„
+	changed_date datetime not null,										-- ì´ë²¤íŠ¸ ë°œìƒ ì‹œê°„
+	created_date datetime not null default getdate()				    -- ë¡œê·¸ ì‚½ì… ì‹œê°„
 )
+
+CREATE INDEX ix_goodslog_created_date ON goods_log(created_date)		-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_goodslog_user_idx ON goods_log(user_idx,created_date)	-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+
+create table guild_history_log(
+	seq_key bigint IDENTITY (1, 1) not null primary key,	
+	guild_idx bigint not null,											-- ê¸¸ë“œ ê³ ìœ ê°’
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	guild_master_idx bigint not null,									-- ê¸¸ë“œì¥ ê³ ìœ ê°’
+	action_type tinyint not null,										-- 0-ê¸¸ë“œ ìƒì„±, 1-ê¸¸ë“œ ë©”ì‹œì§€ ë³€ê²½ , 3-ê¸¸ë“œ ìƒíƒœ ë³€ê²½, 4-ê¸¸ë“œ ë ˆë²¨ì—… ..., 5-ê¸¸ë“œ í¬ì¸íŠ¸ ,6- íì‡„... 
+	action_value tinyint not null,										-- ìœ„ íƒ€ì…ê°’ì— ì¢…ì†ëœ í–‰ë™ê°’ // jsonë“±ì˜ íƒ€ì… ê³ ë ¤í•´ì•¼í• ìˆ˜ë„
+	comment nvarchar(300) null,											-- ê¸¸ë“œ ë©”ì‹œì§€ (ë³€ê²½ì‹œ ë³€ê²½ëœ ê¸¸ë“œë©”ì‹œì§€)
+	guild_level int not null default 1,									-- ê¸¸ë“œ ë ˆë²¨
+	guild_points int not null default 0,								-- ê¸¸ë“œ í¬ì¸íŠ¸ ê°’
+	event_date datetime not null,										-- ì´ë²¤íŠ¸ ë°œìƒ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
+
+)
+
+CREATE INDEX ix_guild_history_created_date ON guild_history_log(created_date)		 -- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_history_user_idx ON guild_history_log(user_idx,created_date)	 -- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_history_guild_idx ON guild_history_log(guild_idx,created_date) -- íŠ¹ì • ê¸¸ë“œ ì¡°íšŒìš© ì¸ë±ìŠ¤
+
 
 create table guild_request_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,	
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	guild_idx bigint not null,											-- ±æµå °íÀ¯°ª
-	guild_master_idx bigint not null,									-- ±æµåÀå °íÀ¯°ª
-	action_type tinyint not null,										-- 0-½ÅÃ», 1-½ÅÃ»°ÅÀı, 2-½ÅÃ»¼ö¶ô, 3-Ãß¹æ, 4-Å»Åğ
-	event_date datetime not null,										-- ÀÌº¥Æ® ¹ß»ı ½Ã°£
-	created_date datetime not null default getdate()					-- ·Î±× »ğÀÔ ½Ã°£
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	guild_idx bigint not null,											-- ê¸¸ë“œ ê³ ìœ ê°’
+	guild_master_idx bigint not null,									-- ê¸¸ë“œì¥ ê³ ìœ ê°’
+	action_type tinyint not null,										-- 0-ì‹ ì²­, 1-ì‹ ì²­ê±°ì ˆ, 2-ì‹ ì²­ìˆ˜ë½, 3-ì¶”ë°©, 4-íƒˆí‡´
+	event_date datetime not null,										-- ì´ë²¤íŠ¸ ë°œìƒ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
 
 )
 
-create table freind_event_log(
+CREATE INDEX ix_guild_request_created_date ON guild_request_log(created_date)		 -- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_request_user_idx ON guild_request_log(user_idx,created_date)	 -- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_request_guild_idx ON guild_request_log(guild_idx,created_date) -- íŠ¹ì • ê¸¸ë“œ ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+
+create table guild_member_history_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,	
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª	
-	friend_idx bigint not null,											-- ½ÅÃ»¹ŞÀº Ä£±¸ °íÀ¯°ª
-	action_type tinyint not null,										-- 0-½ÅÃ», 1-°ÅÀı, 2-½ÅÃ»¼ö¶ô, 3-Ä£±¸²÷±â
-	event_date datetime not null,										-- ÀÌº¥Æ® ¹ß»ı ½Ã°£
-	created_date datetime not null default getdate(),					-- ·Î±× »ğÀÔ ½Ã°£
-	
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	guild_idx bigint not null,											-- ê¸¸ë“œ ê³ ìœ ê°’
+	guild_master_idx bigint not null,									-- ê¸¸ë“œì¥ ê³ ìœ ê°’
+	action_type tinyint not null,										-- í–‰ë™ (0-ê°€ì… , 1- íƒˆí‡´, 2- ê¸°ì—¬ .....)
+	action_value int not null,											-- ìœ„ íƒ€ì…ê°’ì— ì¢…ì†ëœ í–‰ë™ê°’ // jsonë“±ì˜ íƒ€ì… ê³ ë ¤í•´ì•¼í• ìˆ˜ë„
+	event_date datetime not null,										-- ì´ë²¤íŠ¸ ë°œìƒ ì‹œê°„
+	created_date datetime not null default getdate()					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
 )
+
+CREATE INDEX ix_guild_mem_history_created_date ON guild_member_history_log(created_date)		 -- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_mem_history_user_idx ON guild_member_history_log(user_idx,created_date)	 -- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_guild_mem_history_guild_idx ON guild_member_history_log(guild_idx,created_date)  -- íŠ¹ì • ê¸¸ë“œ ì¡°íšŒìš© ì¸ë±ìŠ¤
+
+create table friend_event_log(
+	seq_key bigint IDENTITY (1, 1) not null primary key,	
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’	
+	friend_idx bigint not null,											-- ì‹ ì²­ë°›ì€ ì¹œêµ¬ ê³ ìœ ê°’
+	action_type tinyint not null,										-- 0-ì‹ ì²­, 1-ê±°ì ˆ, 2-ì‹ ì²­ìˆ˜ë½, 3-ì¹œêµ¬ì‚­ì œ
+	event_date datetime not null,										-- ì´ë²¤íŠ¸ ë°œìƒ ì‹œê°„
+	created_date datetime not null default getdate(),					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
+)
+
+CREATE INDEX ix_friend_created_date ON friend_event_log(created_date)		-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_friend_user_idx ON friend_event_log(user_idx,created_date)	-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤
 
 create table mail_log(
 	seq_key bigint IDENTITY (1, 1) not null primary key,	
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª	
-	title nvarchar(50) not null default '',								-- ¸ŞÀÏ Á¦¸ñ
-	contents nvarchar(300) not null default '',							-- ¸ŞÀÏ ³»¿ë
-	received_date datetime not null,									-- ¸ŞÀÏ ¹ŞÀº ½Ã°£
-	read_date datetime not null,										-- ¸ŞÀÏ ÀĞÀº ½Ã°£
-	sender_idx bigint not null,											-- ¹ß½ÅÀÚ
-	item_id	int not null,												-- µ¿ºÀµÈ ¾ÆÀÌÅÛid (¾øÀ¸¸é 0)
-	item_cnt int not null,												-- ¾ÆÀÌÅÛ °¹¼ö 
-	created_date datetime not null default getdate(),					-- ·Î±× »ğÀÔ ½Ã°£
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’	
+	title nvarchar(50) not null default '',								-- ë©”ì¼ ì œëª©
+	contents nvarchar(300) not null default '',							-- ë©”ì¼ ë‚´ìš©
+	received_date datetime not null,									-- ë©”ì¼ ë°›ì€ ì‹œê°„
+	read_date datetime null,											-- ë©”ì¼ ì½ì€ ì‹œê°„
+	sender_idx bigint not null,											-- ë°œì‹ ì
+	item_id	int not null,												-- ë™ë´‰ëœ ì•„ì´í…œid (ì—†ìœ¼ë©´ 0)
+	item_cnt int not null,												-- ì•„ì´í…œ ê°¯ìˆ˜ 
+	created_date datetime not null default getdate(),					-- ë¡œê·¸ ì‚½ì… ì‹œê°„
 )
 
+CREATE INDEX ix_mail_created_date ON mail_log(created_date)				-- í†µê³„ìš© ì¸ë±ìŠ¤
+CREATE INDEX ix_mail_user_idx ON mail_log(user_idx,created_date)		-- íŠ¹ì • ìœ ì € ì¡°íšŒìš© ì¸ë±ìŠ¤

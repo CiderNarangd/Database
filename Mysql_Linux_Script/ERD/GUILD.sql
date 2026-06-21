@@ -1,41 +1,63 @@
 use GUILD;
--- ½Ã°£°ªÀº ¼­¹ö¿¡¼­ ¹Ş¾Æ¿À´Â ±âÁØÀ¸·Î ÇÑ´Ù.
+-- ì‹œê°„ê°’ì€ ì„œë²„ì—ì„œ ë°›ì•„ì˜¤ëŠ” ê¸°ì¤€ìœ¼ë¡œ í•œë‹¤.
+
+-- ê¸¸ë“œ ì •ë³´ í…Œì´ë¸”
 create table guild_info(
-	guild_idx bigint IDENTITY (10000001, 1) NOT NULL Primary key,		-- ±æµå °íÀ¯°ª, 10000001ºÎÅÍ ½ÃÀÛ, ±æµå Ã¹ »ı¼º½Ã ÇØ´ç°ª ¹ß±Ş
-	guild_name nvarchar(20) NOT NULL UNIQUE,							-- ±æµå¸í
-	guild_master_name nvarchar(20) not null,							-- ±æµåÀå ÀÌ¸§
-	guild_master_idx bigint not null,									-- ±æµåÀå °íÀ¯°ª
-	[level] int not null default 1,										-- ±æµå ·¹º§
-	[exp] int not null default 0,										-- ±æµå °æÇèÄ¡
-	guild_points int not null default 0,								-- ±æµå Æ÷ÀÎÆ®
-	guild_status tinyint NOT NULL default 0,							-- ±æµå »óÅÂ°ª ( 0- ¸ğÁıÁß, 1-Á¤Áö ..)
-	comment nvarchar(300),												-- ±æµå ¼Ò°³¶õ.
-	member_cnt int not null default 1,									-- ±æµå¿ø ¼ö
-	icon int not null default 0,										-- ±æµå ¾ÆÀÌÄÜ
-	created_date DATETIME not null default getdate(),					-- ±æµå »ı¼º ½Ã°£
-	updated_date datetime not null default getdate()					-- ±æµå Á¤º¸ º¯°æ ½Ã°£
+	guild_idx bigint IDENTITY (10000001, 1) NOT NULL Primary key,		-- ê¸¸ë“œ ê³ ìœ ê°’, 10000001ë¶€í„° ì‹œì‘, ê¸¸ë“œ ì²« ìƒì„±ì‹œ í•´ë‹¹ê°’ ë°œê¸‰
+	guild_name nvarchar(20) NOT NULL UNIQUE,							-- ê¸¸ë“œëª…
+	guild_master_name nvarchar(20) not null,							-- ê¸¸ë“œì¥ ì´ë¦„
+	guild_master_idx bigint not null,									-- ê¸¸ë“œì¥ ê³ ìœ ê°’
+	[level] int not null default 1,										-- ê¸¸ë“œ ë ˆë²¨
+	[exp] int not null default 0,										-- ê¸¸ë“œ ê²½í—˜ì¹˜
+	guild_points int not null default 0,								-- ê¸¸ë“œ í¬ì¸íŠ¸
+	guild_status tinyint NOT NULL default 0,							-- ê¸¸ë“œ ìƒíƒœê°’ ( 0- ëª¨ì§‘ì¤‘, 1-ëª¨ì§‘ ì¤‘ì§€, 2-íì‡„...)
+	comment nvarchar(300),												-- ê¸¸ë“œ ì†Œê°œë€.
+	member_cnt int not null default 1,									-- ê¸¸ë“œì› ìˆ˜
+	icon int not null default 0,										-- ê¸¸ë“œ ì•„ì´ì½˜
+	is_alive tinyint not null default 1,								-- ê¸¸ë“œ ìƒì‚¬ ì—¬ë¶€
+	created_date datetime not null default getdate(),					-- ê¸¸ë“œ ìƒì„± ì‹œê°„
+	updated_date datetime not null default getdate()					-- ê¸¸ë“œ ì •ë³´ ë³€ê²½ ì‹œê°„
 );
+CREATE INDEX IX_guild_idx ON guild_join_request (guild_idx,status);
+
+-- íì‡„ëœ ê¸¸ë“œëŠ” is_alive ì»¬ëŸ¼ê³¼ update_date ì»¬ëŸ¼ ê¸°ì¤€ìœ¼ë¡œ ê¸°ê°„ì •í•´ì„œ deleteí•œë‹¤. 
 
 create table guild_member(
-	guild_idx bigint not null,											-- ±æµå °íÀ¯°ª
-	user_idx bigint not null,											-- ±æµå¿ø °íÀ¯ °ª
-	[user_name] nvarchar(20) not null,									-- ±æµå¿ø ÀÌ¸§
-	member_grade int not null default 0,								-- ±æµå¿ø µî±Ş (0-±æµå¿ø, 1-°ü¸®ÀÚ, 2-±æµåÀå)
-	contribution_point int not null,									-- ±â¿©µµ
-	created_date datetime not null default getdate(),					-- °¡ÀÔÀÏ
-	last_login_date datetime ,											-- ¸¶Áö¸· Á¢¼Ó ½Ã°£
-	update_date datetime not null default getdate(),					-- ±æµå¿ø Á¤º¸ º¯°æ½Ã°£
+	guild_idx bigint not null,											-- ê¸¸ë“œ ê³ ìœ ê°’
+	user_idx bigint not null,											-- ê¸¸ë“œì› ê³ ìœ  ê°’
+	[user_name] nvarchar(20) not null,									-- ê¸¸ë“œì› ì´ë¦„
+	member_grade int not null default 0,								-- ê¸¸ë“œì› ë“±ê¸‰ (0-ê¸¸ë“œì›, 1-ê´€ë¦¬ì, 2-ê¸¸ë“œì¥)
+	contribution_point int not null default 0,							-- ê¸°ì—¬ë„
+	created_date datetime not null default getdate(),					-- ê°€ì…ì¼
+	last_login_date datetime null,										-- ë§ˆì§€ë§‰ ì ‘ì† ì‹œê°„
+	update_date datetime not null default getdate(),					-- ê¸¸ë“œì› ì •ë³´ ë³€ê²½ì‹œê°„
 	CONSTRAINT pk_guild_member primary key (guild_idx, user_idx)	
 );
 
+-- ê¸¸ë“œ ì‹ ì²­ ìƒíƒœ í…Œì´ë¸”
+-- ì‹ ì²­ìœ ì €ê°€ ì‹ ì²­ ìƒíƒœ í™•ì¸ì´ ë˜ë©´ í•´ë‹¹ ë¡œìš° delete
 create table guild_join_request(
 	seq_key bigint not null IDENTITY (1, 1) Primary key,				-- seq_key
-	guild_idx bigint not null,											-- ½ÅÃ»ÇÑ ±æµåid					--ÀÎµ¦½º
-	user_idx bigint not null,											-- ½ÅÃ»ÇÑ À¯Àúidx				--ÀÎµ¦½º
-	[status] tinyint not null,											-- 0-½ÅÃ»Áß, 1-°ÅÀı, 2-½ÂÀÎ
-	created_date datetime not null default getdate(),					-- ½ÅÃ» ½Ã°£
-	updated_date datetime not null default getdate()					-- Ã³¸® ½Ã°£
+	guild_idx bigint not null,											-- ì‹ ì²­í•œ ê¸¸ë“œid					--ì¸ë±ìŠ¤
+	user_idx bigint not null,											-- ì‹ ì²­í•œ ìœ ì €idx				--ì¸ë±ìŠ¤
+	[status] tinyint not null default 0,								-- 0-ì‹ ì²­ì¤‘, 1-ê±°ì ˆ, 2-ìŠ¹ì¸
+	created_date datetime not null default getdate(),					-- ì‹ ì²­ ì‹œê°„
+	updated_date datetime not null default getdate()					-- ì²˜ë¦¬ ì‹œê°„
 )
-CREATE INDEX IX_request_gidx ON guild_join_request (guild_idx);
-CREATE INDEX IX_request_uidx ON guild_join_request (user_idx);
-CREATE UNIQUE INDEX IX_request_guidx ON guild_join_request (guild_idx,user_idx);
+CREATE INDEX IX_request_gidx ON guild_join_request (guild_idx,status);
+CREATE INDEX IX_request_uidx ON guild_join_request (user_idx,status);
+CREATE UNIQUE INDEX IX_request_guidx ON guild_join_request (guild_idx,user_idx,status);
+
+
+-- ì´ë ¥ë³´ê´€ìš© / ì‹¤ì‹œê°„ ì ì¸ ë¶€ë¶„ì€ Redis ì‚¬ìš©
+create table guild_chat(
+    seq_key bigint not null identity(1,1) PRIMARY KEY,					-- seq key
+    guild_idx bigint NOT NULL,											-- ê¸¸ë“œ ê³ ìœ ê°’
+    user_idx bigint NOT NULL,											-- ì±„íŒ… ì¹œ ìœ ì €
+    [user_name] nvachar(20) NOT NULL,									-- ì±„íŒ…ì¹œ ìœ ì €ëª…
+    message nvarchar(300) NOT NULL,										-- ë©”ì‹œì§€
+    created_date datetime NOT NULL DEFAULT getdate()					-- ì±„íŒ… ì „ì†¡ ì‹œê°„
+)
+CREATE INDEX ix_guild_chat_guild_idx ON guild_chat(guild_idx, seq_key DESC)
+
+ê¸¸ë“œ ëŒ€ì „ ì»¨í…ì¸  ì¶”ê°€.

@@ -1,73 +1,97 @@
 use COMMON;
--- ½Ã°£°ªÀº ¼­¹ö¿¡¼­ ¹Ş¾Æ¿À´Â ±âÁØÀ¸·Î ÇÑ´Ù.
--- »ç¿ëÀÚ Á¤º¸ µ¥ÀÌÅÍº£ÀÌ½º
--- Á¢¼Ó,°áÁ¦ °ü·Ã ¹× À¯Àú ±âÁØ Á¤º¸
+-- ì‹œê°„ê°’ì€ ì„œë²„ì—ì„œ ë°›ì•„ì˜¤ëŠ” ê¸°ì¤€ìœ¼ë¡œ í•œë‹¤.
+-- ì‚¬ìš©ì ì •ë³´ ë°ì´í„°ë² ì´ìŠ¤
+-- ì ‘ì†,ê²°ì œ ê´€ë ¨ ë° ìœ ì € ê¸°ì¤€ ì •ë³´
 
--- »ç¿ëÀÚ Á¤º¸ Å×ÀÌºí : À¯ÀúÀÇ ±âÁØ Á¤º¸
+-- ì‚¬ìš©ì ì •ë³´ í…Œì´ë¸” : ìœ ì €ì˜ ê¸°ì¤€ ì •ë³´
 create table user_info(
-	user_idx bigint IDENTITY (10000001, 1) NOT NULL Primary key,		-- À¯Àú °íÀ¯°ª, 10000001ºÎÅÍ ½ÃÀÛ, À¯Àú Ã¹ ÁøÀÔ½Ã ÇØ´ç°ª ¹ß±Ş
-	[user_name] nvarchar(20) NOT NULL UNIQUE,							-- À¯Àú ´Ğ³×ÀÓ
-	country_code char(3) NOT NULL DEFAULT 'zz',							-- ±¹°¡ÄÚµå (default zz)
-	device_name nvarchar(50) NOT NULL DEFAULT 'zz',						-- »ç¿ëÁßÀÎ ±â±â¸í
-	os_version nvarchar(50) NOT NULL default 'zz',						-- »ç¿ëÁßÀÎ ±â±âÀÇ os¸í
-	last_login_date datetime NOT NULL default getdate(),				-- ¸¶Áö¸· ·Î±×ÀÎ ½Ã°£
-	user_status tinyint NOT NULL default 0,								-- User »óÅÂ°ª ( 0-±âº», 1-Á¤Áö, 2-ÈŞ¸é ... )
-	is_guest tinyint NOT NULL default 0,								-- guest¿©ºÎ ( 0-guest, 1-¼Ò¼È ·Î±×ÀÎ ¿¬µ¿ )
-	created_date DATETIME not null default getdate(),					-- °èÁ¤ »ı¼º ½Ã°£ ( )
-	updated_date datetime not null default getdate()					-- °èÁ¤ Á¤º¸ º¯°æ ½Ã°£
+	user_idx bigint IDENTITY (10000001, 1) NOT NULL Primary key,		-- ìœ ì € ê³ ìœ ê°’, 10000001ë¶€í„° ì‹œì‘, ìœ ì € ì²« ì§„ì…ì‹œ í•´ë‹¹ê°’ ë°œê¸‰
+	[user_name] nvarchar(20) NOT NULL UNIQUE,							-- ìœ ì € ë‹‰ë„¤ì„
+	country_code char(3) NOT NULL DEFAULT 'zz',							-- êµ­ê°€ì½”ë“œ (default zz)
+	device_name nvarchar(50) NOT NULL DEFAULT 'zz',						-- ì‚¬ìš©ì¤‘ì¸ ê¸°ê¸°ëª…
+	os_version nvarchar(50) NOT NULL default 'zz',						-- ì‚¬ìš©ì¤‘ì¸ ê¸°ê¸°ì˜ osëª…
+	last_login_date datetime NOT NULL default getdate(),				-- ë§ˆì§€ë§‰ ë¡œê·¸ì¸ ì‹œê°„
+	user_status tinyint NOT NULL default 0,								-- User ìƒíƒœê°’ ( 0-ê¸°ë³¸, 1-ì •ì§€, 2-íœ´ë©´ ... )
+	is_guest tinyint NOT NULL default 0,								-- guestì—¬ë¶€ ( 0-guest, 1-ì†Œì…œ ë¡œê·¸ì¸ ì—°ë™ )
+	created_date DATETIME not null default getdate(),					-- ê³„ì • ìƒì„± ì‹œê°„ ( )
+	updated_date datetime not null default getdate()					-- ê³„ì • ì •ë³´ ë³€ê²½ ì‹œê°„
 );
 
--- ·Î±×ÀÎ Á¤º¸ Å×ÀÌºí : ¼Ò¼È ÇÃ·§Æûº° ·Î±×ÀÎ Á¤º¸ °ü¸®
+-- ë¡œê·¸ì¸ ì •ë³´ í…Œì´ë¸” : ì†Œì…œ í”Œë«í¼ë³„ ë¡œê·¸ì¸ ì •ë³´ ê´€ë¦¬
 create table login_info
 (
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	platform_type tinyint not null,										-- ÇÃ·§Æû Å¸ÀÔ (0 - Google, 1 - Apple Login, 2 - MS, 3 - ³×ÀÌ¹ö.... )
-	access_token nvarchar(300) null,									-- ¾×¼¼½º ÅäÅ«
-	refresh_token nvarchar(300) null,									-- ¸®ÇÁ·¹½Ã ÅäÅ«
-	created_date datetime not null default getdate(),					-- ÇÃ·§Æû ÃÖÃÊ ¿¬µ¿ ½ÃÁ¡
-	updated_date datetime not null default getdate(),					-- ÇØ´ç ·Î¿ì º¯°æ ½ÃÁ¡.
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	platform_type tinyint not null,										-- í”Œë«í¼ íƒ€ì… (0 - Google, 1 - Apple Login, 2 - MS, 3 - ë„¤ì´ë²„.... )
+	access_token nvarchar(300) null,									-- ì•¡ì„¸ìŠ¤ í† í°
+	refresh_token nvarchar(300) null,									-- ë¦¬í”„ë ˆì‹œ í† í°
+	token_expired_date datetime null,									-- í† í° ë§Œë£Œì¼
+	created_date datetime not null default getdate(),					-- í”Œë«í¼ ìµœì´ˆ ì—°ë™ ì‹œì 
+	updated_date datetime not null default getdate(),					-- í•´ë‹¹ ë¡œìš° ë³€ê²½ ì‹œì .
 	CONSTRAINT pk_login_user_platform primary key (user_idx, platform_type)	
 )
 
--- Á¤ÁöµÈ À¯Àú Å×ÀÌºí : Á¤Áö À¯Àú »çÀ¯ ¹× ±â°£ °ü¸®
+-- ì •ì§€ëœ ìœ ì € í…Œì´ë¸” : ì •ì§€ ìœ ì € ì‚¬ìœ  ë° ê¸°ê°„ ê´€ë¦¬
+-- History ê´€ë¦¬ëŠ” LogDBì—ì„œ í•´ë‹¹ í…Œì´ë¸”ì€ ìœ ì €ê°€ ë¡œê·¸ì¸ì‹œ ì²´í¬ìš©
 create table block_user_list
 (
-	user_idx bigint not null primary key,								-- À¯Àú °íÀ¯ °ª
-	block_reason tinyint not null,										-- Á¤Áö »çÀ¯ ( 0 - ºñ¸Å³Ê ÇàÀ§, 1 - )
-	block_detail_reason nvarchar(500) default null,						-- »ó¼¼ »çÀ¯
-	blocked_by nvarchar(30),											-- Á¤Áö ÁÖÃÖ ( ¿î¿µÀÚ, System ... )
-	is_active tinyint not null default 1,								-- Á¤Áö È°¼º ¿©ºÎ ( 0 - °èÁ¤ Á¤Áö ºñÈ°¼ºÈ­, 1- °èÁ¤ Á¤Áö È°¼ºÈ­)
-	block_start_date datetime not null default '2000-01-01',			-- Á¤Áö ½ÃÀÛ ½Ã°£
-	block_end_date datetime not null default '2000-01-01',				-- Á¤Áö ¸¸·áÀÏ
+	user_idx bigint not null primary key,								-- ìœ ì € ê³ ìœ  ê°’
+	block_reason tinyint not null,										-- ì •ì§€ ì‚¬ìœ  ( 0 - ë¹„ë§¤ë„ˆ í–‰ìœ„, 1 - )
+	block_detail_reason nvarchar(500) default null,						-- ìƒì„¸ ì‚¬ìœ 
+	blocked_by nvarchar(30),											-- ì •ì§€ ì£¼ìµœ ( ìš´ì˜ì, System ... )
+	is_active tinyint not null default 1,								-- ì •ì§€ í™œì„± ì—¬ë¶€ ( 0 - ê³„ì • ì •ì§€ ë¹„í™œì„±í™”, 1- ê³„ì • ì •ì§€ í™œì„±í™”)
+	block_start_date datetime not null default '2000-01-01',			-- ì •ì§€ ì‹œì‘ ì‹œê°„
+	block_end_date datetime not null default '2000-01-01'				-- ì •ì§€ ë§Œë£Œì¼
 	
 )
 
--- °áÁ¦ Å×ÀÌºí : °áÁ¦ »óÅÂ °ü¸® Å×ÀÌºí (·Î±× Å×ÀÌºí°ú º°µµ)
+-- ìœ ì € ì‹ ê³  í…Œì´ë¸”
+create table user_report
+(
+    seq_key         bigint IDENTITY(1,1)    not null primary key,
+    user_idx 		bigint                  not null,   				-- ì‹ ê³ í•œ ìœ ì €
+    target_idx      bigint                  not null,   				-- ì‹ ê³ ë‹¹í•œ ìœ ì €
+    report_reason   tinyint                 not null,   				-- 0-ìš•ì„¤, 1-í•µ, 2-ë¹„ë§¤ë„ˆ ...
+    report_detail   nvarchar(500)           null,						-- ì‹ ê³  ìƒì„¸ ì‚¬ìœ  
+    [status]        tinyint                 not null DEFAULT 0, 		-- 0-ì ‘ìˆ˜, 1-ì²˜ë¦¬ì™„ë£Œ, 2-ë°˜ë ¤ ...
+    created_date    datetime                not null DEFAULT getdate()	-- ì‹ ê³ ì¼
+)
+CREATE INDEX ix_user_report_target ON user_report(target_idx, [status])
+
+
+
+-- ê²°ì œ í…Œì´ë¸” : ê²°ì œ ìƒíƒœ ê´€ë¦¬ í…Œì´ë¸” (ë¡œê·¸ í…Œì´ë¸”ê³¼ ë³„ë„)
 create table billing
 (
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- À¯Àú °íÀ¯ °ª
-	platform_type int not null,											-- ( 0 - Google Market, 1 - AppStore, 2 - OneStore....)
-	[status] int not null,												-- °áÁ¦ »óÅÂ (0 - ÁøÇàÁß, 1 - ¿Ï·á, 2 - ½ÇÆĞ ...)
-	product_id int not null,											-- »óÇ°ID
-	country_code char(3) NOT NULL DEFAULT 'zz',							-- ±¹°¡ÄÚµå (default zz)
-	amount decimal(10,2) not null,										-- ±İ¾×
-	currency nvarchar(5) not null default 'zz',							-- È­Æó ÄÚµå
-	receipt nvarchar(300),												-- ¿µ¼öÁõ
-	fail_reason nvarchar(300) default null,								-- °áÁ¦ ½ÇÆĞ »çÀ¯
-	bill_start_date datetime default getdate(),							-- °áÁ¦ ½ÃÀÛ ½Ã°£ 
-	bill_updated_date datetime ,										-- °áÁ¦ »óÅÂ º¯°æ ½Ã°£
-	bill_end_date datetime												-- °áÁ¦ ¿Ï·á ½Ã°£
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ  ê°’
+	platform_type tinyint not null,										-- ( 0 - Google Market, 1 - AppStore, 2 - OneStore....)
+	[status] tinyint not null,											-- ê²°ì œ ìƒíƒœ (0 - ì§„í–‰ì¤‘, 1 - ì™„ë£Œ, 2 - ì‹¤íŒ¨ ...)
+	product_id int not null,											-- ìƒí’ˆID
+	country_code char(3) NOT NULL DEFAULT 'zz',							-- êµ­ê°€ì½”ë“œ (default zz)
+	amount decimal(10,2) not null,										-- ê¸ˆì•¡
+	currency nvarchar(5) not null default 'zz',							-- í™”í ì½”ë“œ
+	receipt nvarchar(300),												-- ì˜ìˆ˜ì¦ // ê¸¸ì´ ë” ëŠ˜ë ¤ì•¼ í• ìˆ˜ë„
+	bill_tx_id nvarchar(300),											-- ìŠ¤í† ì–´ ê²°ì œ ê³ ìœ id
+	fail_reason nvarchar(300) default null,								-- ê²°ì œ ì‹¤íŒ¨ ì‚¬ìœ 
+	bill_start_date datetime default getdate(),							-- ê²°ì œ ì‹œì‘ ì‹œê°„ 
+	bill_updated_date datetime ,										-- ê²°ì œ ìƒíƒœ ë³€ê²½ ì‹œê°„
+	bill_end_date datetime												-- ê²°ì œ ì™„ë£Œ ì‹œê°„
 
 )
+CREATE INDEX ix_billing_user_idx ON billing(user_idx)          			-- ìœ ì € ê²°ì œ ì´ë ¥/ìƒíƒœ ì¡°íšŒ
 
--- °øÁö »çÇ× Å×ÀÌºí
+
+-- ê³µì§€ ì‚¬í•­ í…Œì´ë¸”
 create table Notice
 (
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å° 
-	notice_type int not null default 0,									-- °øÁö Å¸ÀÔ (0 - ÀÏ¹İ , 1 - ±ä±Ş...)
-	contents text not null default '',									-- ³»¿ë
-	is_active tinyint not null default 0,								-- °øÁö ÃV¼ºÈ­ ¿©ºÎ( 0 - ºñÈ°¼ºÈ­, 1- È°¼ºÈ­)
-	notice_start_date datetime not null default '2000-01-01',			-- °øÁö ½ÃÀÛÀÏ 
-	notice_end_date datetime not null default '2000-01-01',				-- °øÁö Á¾·áÀÏ
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤ 
+	notice_type int not null default 0,									-- ê³µì§€ íƒ€ì… (0 - ì¼ë°˜ , 1 - ê¸´ê¸‰...)
+	contents text not null default '',									-- ë‚´ìš©
+	is_active tinyint not null default 0,								-- ê³µì§€ í™œì„±í™” ì—¬ë¶€( 0 - ë¹„í™œì„±í™”, 1- í™œì„±í™”)
+	notice_start_date datetime not null default '2000-01-01',			-- ê³µì§€ ì‹œì‘ì¼ 
+	notice_end_date datetime not null default '2000-01-01',				-- ê³µì§€ ì¢…ë£Œì¼
+	created_date datetime not null default getdate()					-- ê³µì§€ ì‘ì„±ì¼
 )
+-- Rowê°€ ë§ì§€ ì•Šì„ê²ƒì´ê³  ê°’ì´ ì¶”ê°€ë˜ê±°ë‚˜ í• ì¼ë„ ë³„ë¡œ ì—†ì„ê²ƒìœ¼ë¡œ ì˜ˆìƒ
+-- í’€ìŠ¤ìº”í•´ë„ ë¬¸ì œ ì—†ì„ê²ƒì´ê³  ì¸ë±ìŠ¤ ì—†ì´ í•„í„°ë§í•´ë„ ë¬¸ì œ ì—†ì„ë“¯.
+-- ë¡œìš°ê°€ ì¢€ ë§ì•„ì ¸ë„ ê·¸ë•Œ ì¸ë±ìŠ¤ì¶”ê°€í•´ë„ ë ë“¯í•˜ë‹¤.

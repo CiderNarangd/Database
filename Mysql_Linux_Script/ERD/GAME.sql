@@ -1,155 +1,198 @@
 use GAME;
---½Ã°£°ªÀº ±âº»ÀûÀ¸·Î ¼­¹ö¿¡¼­ ¹Ş¾Æ¿À´Â°ÍÀ» ¿øÄ¢À¸·Î ÇÑ´Ù.
+--ì‹œê°„ê°’ì€ ê¸°ë³¸ì ìœ¼ë¡œ ì„œë²„ì—ì„œ ë°›ì•„ì˜¤ëŠ”ê²ƒì„ ì›ì¹™ìœ¼ë¡œ í•œë‹¤.
+-- ì¬í™”, ì•„ì´í…œ, ì»¨í…ì¸  ê´€ë ¨ í…Œì´ë¸”ë“¤.
+
 create table user_game_info(
-	user_idx bigint not null primary key,								-- À¯Àú °íÀ¯°ª
-	[user_name] nvarchar(20) not null unique,							-- À¯Àú ÀÌ¸§
-	[level] int not null default 1,										-- À¯Àú ·¹º§
-	[exp] int not null default 0,										-- °æÇèÄ¡
-	free_goods int not null default 0,									-- ¹«·á ÀçÈ­
-	paid_goods int not null default 0,									-- À¯·á ÀçÈ­
-	skill_points int not null default 0,								-- ½ºÅ³ Æ÷ÀÎÆ®
-	score int not null,													-- Á¡¼ö
-	created_date datetime not null default getdate(),					-- ÇØ´ç Å×ÀÌºí »ğÀÔ ½Ã°£
-	updated_date datetime not null default getdate()					-- À¯Àú Á¤º¸ ¸¶Áö¸· º¯°æ ½Ã°£
+	user_idx bigint not null primary key,								-- ìœ ì € ê³ ìœ ê°’
+	[user_name] nvarchar(20) not null unique,							-- ìœ ì € ì´ë¦„
+	[level] int not null default 1,										-- ìœ ì € ë ˆë²¨
+	[exp] int not null default 0,										-- ê²½í—˜ì¹˜
+	free_goods int not null default 0,									-- ë¬´ë£Œ ì¬í™”
+	paid_goods int not null default 0,									-- ìœ ë£Œ ì¬í™”
+	skill_points int not null default 0,								-- ìŠ¤í‚¬ í¬ì¸íŠ¸
+	score int not null,													-- ì ìˆ˜
+	guild_idx bigint not null default 0,								-- ìœ ì €ê°€ ê°€ì…ì¤‘ì¸ ê¸¸ë“œ ê³ ìœ ê°’
+	guild_name nvarchar(20) NOT NULL default '',						-- ìœ ì €ê°€ ê°€ì…ì¤‘ì¸ ê¸¸ë“œì´ë¦„
+	created_date datetime not null default getdate(),					-- í•´ë‹¹ í…Œì´ë¸” ì‚½ì… ì‹œê°„
+	updated_date datetime not null default getdate()					-- ìœ ì € ì •ë³´ ë§ˆì§€ë§‰ ë³€ê²½ ì‹œê°„
 );
 
--- user_idx pkÁöÁ¤½Ã ÆäÀÌÁö ½ºÇÃ¸´ÀÌ ½ÉÇÒ°ÍÀ¸·Î ¿¹»óµÇ¾î, ´ëÃ¼Å° »ç¿ë
--- user_idx ¼¼ÄÁ´õ¸® ÀÎµ¦½º ÁöÁ¤ÇØ¼­ »ç¿ë.
--- ÀÎº¥Åä¸® Å×ÀÌºíÀº À¯Àú¼ö°¡ ¸¹¾ÆÁö°í ÇÃ·¹ÀÌ¾îºí Ä³¸¯ÅÍ°¡ ´Ã¾î³ª°í Ä³¸¯ÅÍº° ÀÎº¥Åä¸®¸¦ °®°ÔµÇ¸é ¹«ÇÑÁ¤ ´Ã¾î³­´Ù.
--- Â÷ÈÄ ¾ĞÃàÇÏ¿© ·Î¿ì¼ö ÁÙÀÌ´Â°Íµµ °í·Á ÇÊ¿ä.( )
+-- user_idx pkì§€ì •ì‹œ í˜ì´ì§€ ìŠ¤í”Œë¦¿ì´ ì‹¬í• ê²ƒìœ¼ë¡œ ì˜ˆìƒë˜ì–´, ëŒ€ì²´í‚¤ ì‚¬ìš©
+-- user_idx ì„¸ì»¨ë”ë¦¬ ì¸ë±ìŠ¤ ì§€ì •í•´ì„œ ì‚¬ìš©.
+-- ì¸ë²¤í† ë¦¬ í…Œì´ë¸”ì€ ìœ ì €ìˆ˜ê°€ ë§ì•„ì§€ê³  í”Œë ˆì´ì–´ë¸” ìºë¦­í„°ê°€ ëŠ˜ì–´ë‚˜ê³  ìºë¦­í„°ë³„ ì¸ë²¤í† ë¦¬ë¥¼ ê°–ê²Œë˜ë©´ ë¬´í•œì • ëŠ˜ì–´ë‚œë‹¤.
+-- ì°¨í›„ ì••ì¶•í•˜ì—¬ ë¡œìš°ìˆ˜ ì¤„ì´ëŠ”ê²ƒë„ ê³ ë ¤ í•„ìš”.( )
 create table equip_inven(		
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	item_type int not null,												-- ºÎÀ§	
-	item_id int not null,												-- ¾ÆÀÌÅÛid
-	option1_id int not null default 0,									-- ¾ÆÀÌÅÛ ¿É¼Ç id
-	option1_value int not null default 0,								-- ¾ÆÀÌÅÛ ¿É¼Ç value
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	item_type int not null,												-- ë¶€ìœ„	
+	item_id int not null,												-- ì•„ì´í…œid
+	option1_id int not null default 0,									-- ì•„ì´í…œ ì˜µì…˜ id
+	option1_value int not null default 0,								-- ì•„ì´í…œ ì˜µì…˜ value
 	option2_id int not null default 0,
 	option2_value int not null default 0,
 	option3_id int not null default 0,
 	option3_value int not null default 0,
-	is_equipped tinyint not null default 0,								-- ÀåÂø ¿©ºÎ // ÀåÂøx-0, ÀåÂøo -1
-	item_expiration_date datetime not null default '2050-01-01',		-- ¾ÆÀÌÅÛ ¸¸·áÀÏ
-	updated_date datetime not null,										-- ¾ÆÀÌÅÛ ³»¿ª º¯°æÀÏ
-	created_date datetime not null default getdate(),					-- ¾ÆÀÌÅÛ È¹µæÀÏ
+	is_equipped tinyint not null default 0,								-- ì¥ì°© ì—¬ë¶€ // ì¥ì°©x-0, ì¥ì°©o -1
+	item_expiration_date datetime not null default '2050-01-01',		-- ì•„ì´í…œ ë§Œë£Œì¼   // ë°°ì¹˜ì‘ì—…ë³´ë‹¨ ë¡œê·¸ì¸ì‹œ ì§€ì›Œì¤˜ë„ ë¬¸ì œ ì—†ì„ë“¯
+	updated_date datetime not null,										-- ì•„ì´í…œ ë‚´ì—­ ë³€ê²½ì¼
+	created_date datetime not null default getdate()					-- ì•„ì´í…œ íšë“ì¼
 );
+CREATE INDEX ix_equip_inven_user_idx ON equip_inven(user_idx)
 
 
--- ÀåÂø ºÎÀ§ °¹¼ö°¡ Àı´ëÀûÀ¸·Î °íÁ¤ÀÌ¸é ÄÃ·³À» ´Ã·Á¼­ ROW¸¦ ÁÙÀÌ´Â ¹æ½ÄÀÌ°ÚÁö¸¸, 
--- Á¤ÇØÁø°Ô ¾øÀ¸¹Ç·Î ROW¸¦ ´Ã¸®´Â ¹æ½ÄÀ¸·Î
--- Ä³¸¯ÅÍ »ı¼º ½ÃÁ¡¿¡ ÃÊ±â°ªµéÀ» ¼ÂÆÃÇÏ¿© ·Î¿ì¸¦ ³Ö¾îÁØ´Ù.
+-- ì¥ì°© ë¶€ìœ„ ê°¯ìˆ˜ê°€ ì ˆëŒ€ì ìœ¼ë¡œ ê³ ì •ì´ë©´ ì»¬ëŸ¼ì„ ëŠ˜ë ¤ì„œ ROWë¥¼ ì¤„ì´ëŠ” ë°©ì‹ì´ê² ì§€ë§Œ, 
+-- ì •í•´ì§„ê²Œ ì—†ìœ¼ë¯€ë¡œ ROWë¥¼ ëŠ˜ë¦¬ëŠ” ë°©ì‹ìœ¼ë¡œ
+-- ìºë¦­í„° ìƒì„± ì‹œì ì— ì´ˆê¸°ê°’ë“¤ì„ ì…‹íŒ…í•˜ì—¬ ë¡œìš°ë¥¼ ë„£ì–´ì¤€ë‹¤.
 create table equip_item(
 	user_idx bigint not null,											-- 
-	slot_type int not null,												-- 0-¹«±â, 1-¸Ó¸®, 2-°¡½¿, 3-´Ù¸®, 4-¹ß .... 
-	inven_index	bigint not null default 0,								-- ÀÎº¥Åä¸®¿¡ ÀÕ´Â seq_key°ª, 0ÀÌ¸é ÀåÂøx»óÅÂ
-	equipped_time datetime not null default getdate()					-- ¾ÆÀÌÅÛ ÀåÂø ½Ã°£.
+	slot_type int not null,												-- 0-ë¬´ê¸°, 1-ë¨¸ë¦¬, 2-ê°€ìŠ´, 3-ë‹¤ë¦¬, 4-ë°œ .... 
+	inven_index	bigint not null default 0,								-- ì¸ë²¤í† ë¦¬ì— ì‡ëŠ” seq_keyê°’, 0ì´ë©´ ì¥ì°©xìƒíƒœ
+	equipped_time datetime not null default getdate(),					-- ì•„ì´í…œ ì¥ì°© ì‹œê°„.
+	
+	CONSTRAINT pk_equip_item PRIMARY KEY (user_idx, slot_type)
 )
 
--- °³¹ßÆíÀÇ °í·ÁÇÏ¿© ÀÎº¥Åä¸® Å×ÀÌºí ºĞ¸®.
--- µ¿ÀÏÇÏ°Ô ¾ÆÀÌÅÛ Á¾·ù Áõ°¡½Ã ¾ĞÃà °í·ÁÇÊ¿ä.
+-- ê°œë°œí¸ì˜ ê³ ë ¤í•˜ì—¬ ì¸ë²¤í† ë¦¬ í…Œì´ë¸” ë¶„ë¦¬.
+-- ë™ì¼í•˜ê²Œ ì•„ì´í…œ ì¢…ë¥˜ ì¦ê°€ì‹œ ì••ì¶• ê³ ë ¤í•„ìš”.
 create table consumable_inven(
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	item_type int not null,												-- Àç·á / ¹°¾à .. 
-	item_id int not null,												-- ¾ÆÀÌÅÛid					
-	quantity int not null,												-- °¹¼ö
-	item_expiration_date datetime not null default '2050-01-01',		-- ¾ÆÀÌÅÛ ¸¸·áÀÏ
-	updated_date datetime not null,										-- ¾ÆÀÌÅÛ ³»¿ª º¯°æÀÏ
-	created_date datetime not null default getdate(),					-- ¾ÆÀÌÅÛ È¹µéÀÏ
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	item_type int not null,												-- ì¬ë£Œ / ë¬¼ì•½ .. 
+	item_id int not null,												-- ì•„ì´í…œid					
+	quantity int not null,												-- ê°¯ìˆ˜
+	item_expiration_date datetime not null default '2050-01-01',		-- ì•„ì´í…œ ë§Œë£Œì¼
+	updated_date datetime not null,										-- ì•„ì´í…œ ë‚´ì—­ ë³€ê²½ì¼
+	created_date datetime not null default getdate(),					-- ì•„ì´í…œ íšë“¤ì¼
 )
+CREATE INDEX ix_consumable_inven_user_idx ON consumable_inven(user_idx)
 
+
+-- ë§Œë£Œë©”ì¼ì€ ë°°ì¹˜ì²˜ë¦¬ / ìœ ì €ê°€ ë„ˆë¬´ ë§ì´ ëŠ˜ì–´ë‚˜ë©´ íŒŒí‹°ì…”ë‹/ìƒ¤ë”© (ë‹¤ë¥¸ í…Œì´ë¸” ìƒí™©ë´ì„œ)ê³ ë ¤
 create table Mail(
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	title nvarchar(50) not null default '',								-- ¸ŞÀÏ Á¦¸ñ
-	contents nvarchar(300) not null default '',							-- ¸ŞÀÏ ³»¿ë
-	is_read tinyint not null default 0,									-- ÀĞÀ½ À¯¹«
-	item_type int not null default 0,									-- ¾ÆÀÌÅÛÀÌ Ã·ºÎµÇ¾îÀÖÀ¸¸é, ¾øÀ¸¸é 0
-	item_id int not null default 0,										-- ¾ÆÀÌÅÛÀÌ Ã·ºÎµÇ¾îÀÖÀ¸¸é, ¾øÀ¸¸é 0
-	sented_time datetime not null default getdate(),					-- º¸³½ ½Ã°£
-	expired_date datetime not null default '2050-01-01'					-- ¸¸·áÀÏ
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	title nvarchar(50) not null default '',								-- ë©”ì¼ ì œëª©
+	contents nvarchar(300) not null default '',							-- ë©”ì¼ ë‚´ìš©
+	is_read tinyint not null default 0,									-- ì½ìŒ ìœ ë¬´
+	item_type int not null default 0,									-- ì•„ì´í…œì´ ì²¨ë¶€ë˜ì–´ìˆìœ¼ë©´, ì—†ìœ¼ë©´ 0
+	item_id int not null default 0,										-- ì•„ì´í…œì´ ì²¨ë¶€ë˜ì–´ìˆìœ¼ë©´, ì—†ìœ¼ë©´ 0
+	send_time datetime not null default getdate(),						-- ë³´ë‚¸ ì‹œê°„
+	expired_date datetime not null default '2050-01-01',				-- ë§Œë£Œì¼
+	is_deleted tinyint not null default 0								-- ì‚­ì œ ì—¬ë¶€ ( 0 - ì‚­ì œx , 1- ì‚­ì œo / ë°°ì¹˜ë¡œ ì¼ê´„ ì‚­ì œì‹œ ê°’ì´ 1ì¸ê²ƒë§Œ ì‚­ì œ) 
 )
+CREATE INDEX ix_mail_user_idx ON Mail(user_idx)
+CREATE INDEX ix_mail_expired ON Mail(is_deleted, expired_date)			-- ë°°ì¹˜ ì¼ê´„ ì‚­ì œìš© ì¸ë±ìŠ¤
+																		-- í’€ìŠ¤ìº” ì¼ì–´ë‚ ê²ƒ ê°™ìœ¼ë‹ˆ ë‚˜ëˆ ì„œ ì²˜ë¦¬í•˜ëŠ”ê²ƒë„ ê³ ë ¤
+
 
 create table user_quest(
-	user_idx bigint not null ,											-- À¯Àú °íÀ¯ °ª
-	quest_id int not null,												-- Äù½ºÆ® id
-	quest_status int not null default 0,								-- Äù½ºÆ® »óÅÂ 0-Äù½ºÆ® ¹ŞÁö ¾ÊÀ½. 1-Äù½ºÆ® ÁøÇàÁß , 2-Äù½ºÆ® ¿Ï·á
-	quest_progress int not null default 0,								-- Äù½ºÆ® ÁøÇà »óÅÂ
-	created_date datetime not null default getdate(),					-- Äù½ºÆ® ÃÖÃÊ ¹ŞÀº ½Ã°£
-	updated_date datetime not null default getdate(),					-- Äù½ºÆ® »óÅÂ º¯°æ ½Ã°£
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null ,											-- ìœ ì € ê³ ìœ  ê°’
+	quest_id int not null,												-- í€˜ìŠ¤íŠ¸ id
+	quest_status int not null default 0,								-- í€˜ìŠ¤íŠ¸ ìƒíƒœ 0-í€˜ìŠ¤íŠ¸ ë°›ì§€ ì•ŠìŒ. 1-í€˜ìŠ¤íŠ¸ ì§„í–‰ì¤‘ , 2-í€˜ìŠ¤íŠ¸ ì™„ë£Œ
+	quest_progress int not null default 0,								-- í€˜ìŠ¤íŠ¸ ì§„í–‰ ìƒíƒœ
+	created_date datetime not null default getdate(),					-- í€˜ìŠ¤íŠ¸ ìµœì´ˆ ë°›ì€ ì‹œê°„
+	updated_date datetime not null default getdate(),					-- í€˜ìŠ¤íŠ¸ ìƒíƒœ ë³€ê²½ ì‹œê°„
+	
 )
+create index ix_quest_user_idx ON user_quest(user_idx)	
+
+
 
 create table user_achievement(
-	user_idx bigint not null primary key ,								-- À¯Àú °íÀ¯ °ª
-	achievement_cate int not null,										-- ¾÷Àû Ä«Å×°í¸®
-	achievement_id int not null,										-- ¾÷Àû id
-	achievement_progress int not null,									-- ¾÷Àû ÁøÇà»óÅÂ
-	achievement_goal int not null,										-- ¾÷Àû ´Ş¼ºÇÊ¿ä°ª
-	achievement_status int not null,									-- ¾÷Àû »óÅÂ		0-¹Ì´Ş¼º, 1-´Ş¼º
-	created_date datetime not null default getdate(),					-- ¾÷Àû ´Ş¼ºÀÏ
-	updated_date datetime not null default getdate()					-- ¾÷Àû »óÅÂ º¯°æÀÏ
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null ,											-- ìœ ì € ê³ ìœ  ê°’
+	achievement_id int not null,										-- ì—…ì  id
+	achievement_cate int not null,										-- ì—…ì  ì¹´í…Œê³ ë¦¬
+	achievement_progress int not null,									-- ì—…ì  ì§„í–‰ìƒíƒœ
+	achievement_goal int not null,										-- ì—…ì  ë‹¬ì„±í•„ìš”ê°’
+	achievement_status int not null,									-- ì—…ì  ìƒíƒœ		0-ë¯¸ë‹¬ì„±, 1-ë‹¬ì„±
+	created_date datetime not null default getdate(),					-- ì—…ì  ë‹¬ì„±ì¼
+	updated_date datetime not null default getdate()					-- ì—…ì  ìƒíƒœ ë³€ê²½ì¼
 )
+create index ix_achiv_user_idx ON user_achievement(user_idx)	
 
+
+-- ê²Œì„ ìµœì´ˆ ì ‘ì†ì‹œ ë¡œìš° preInsert
 create table user_skill(
-	user_idx bigint not null primary key,								-- À¯Àú °íÀ¯ °ª
-	skill_id int not null,												-- ½ºÅ³ id
-	skill_level int not null,											-- ½ºÅ³ level	
-	created_date datetime not null default getdate()					-- ½ºÅ³ È¹µæÀÏ
+	user_idx bigint not null ,											-- ìœ ì € ê³ ìœ  ê°’
+	skill_id int not null,												-- ìŠ¤í‚¬ id
+	skill_level int not null default 1,									-- ìŠ¤í‚¬ level	
+	created_date datetime not null default getdate(),					-- ìŠ¤í‚¬ íšë“ì¼
+	
+	CONSTRAINT pk_user_skill PRIMARY KEY (user_idx, skill_id)
 )
 
+-- status( ì ‘ì†ì¤‘, ë§¤ì¹˜ì¤‘ ë“± ...)ë“±ì€ ë©”ëª¨ë¦¬dbì‚¬ìš© ê³ ë ¤
 create table friend(
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null, 
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null, 											-- ìœ ì € ê³ ìœ ê°’
 	friend_idx bigint not null,
-	created_date datetime not null default getdate()					-- Ä£±¸ ¸ÎÀº³¯
+	created_date datetime not null default getdate()					-- ì¹œêµ¬ ë§ºì€ë‚ 
 )
+create index ix_friend_user_idx ON friend(user_idx)
+-- ì¤‘ë³µì²´í¬ëŠ” insertì´ì „ì— selectë¡œ ì‚¬ì „ì²´í¬.
 
 create table friend_request(
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- ¿äÃ» º¸³½ À¯Àú °íÀ¯ °ª
-	request_user_idx bigint not null,									-- ¿äÃ» ¹ŞÀº À¯Àú °íÀ¯ °ª
-	[status] tinyint not null default 0,								-- 0-½ÅÃ»Áß, 1-¼ö¶ô, 2-°ÅÀı 
-	created_date datetime not null default getdate(),					-- ½ÅÃ» ½Ã°£
-	responed_date datetime not null,									-- ¹İÀÀ ½Ã°£
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	user_idx bigint not null,											-- ìš”ì²­ ë³´ë‚¸ ìœ ì € ê³ ìœ  ê°’
+	request_user_idx bigint not null,									-- ìš”ì²­ ë°›ì€ ìœ ì € ê³ ìœ  ê°’
+	[status] tinyint not null default 0,								-- 0-ì‹ ì²­ì¤‘, 1-ìˆ˜ë½, 2-ê±°ì ˆ 
+	created_date datetime not null default getdate(),					-- ì‹ ì²­ ì‹œê°„
+	responded_time datetime null,										-- ì‘ë‹µ ì‹œê°„
 )
---½ÅÃ»ÀÏ±âÁØÀ¸·Î 
+create index ix_fr_user_idx ON friend_request(user_idx)					-- status ì»¬ëŸ¼ê¹Œì§€ ë¬¶ì–´ì•¼ í• ìˆ˜ë„.
+create index ix_fr_requester_idx ON friend_request(request_user_idx)	-- ë™ì¼
+create index ix_created_date ON friend_request(created_date)			-- ë°°ì¹˜ ì‚­ì œ ìš©
+-- ì‹ ì²­ì¼ê¸°ì¤€ìœ¼ë¡œ 
+-- ë¡œê·¸ì¸ or ì¹œêµ¬ì°½ ì˜¤í”ˆì‹œ í™•ì¸í•˜ê³  friend tableì— Insert
+-- ì¤‘ë³µ ì‹ ì²­ì€ insertì „ì— selectë¡œ ì‚¬ì „ì²´í¬
 
 
--- °ÔÀÓÀÌ °Å´ëÇØÁö°í Á¤º¸°¡ ¸¹¾ÆÁö¸é text·Î º¯°æ°í·Á ÇÊ¿ä.
--- À¯Àú´ç ÃÖ´ë 10°³±îÁö¸¸ º¸°üÇÑ´Ù°í °¡Á¤ / ¸ğµç ¸ÅÄ¡±â·ÏµéÀº LogDB¿¡ ÀûÀç.
--- °³¹ßÆíÀÇ»ó ÇÑ¹øÀÇ ¸ÅÄ¡ÈÄ µÎ°³ÀÇ ·Î¿ì°¡ Insert.
+-- ê²Œì„ì´ ê±°ëŒ€í•´ì§€ê³  ì •ë³´ê°€ ë§ì•„ì§€ë©´ nvarchar(max)ë¡œ ë³€ê²½ê³ ë ¤ í•„ìš”.
+-- ìœ ì €ë‹¹ ìµœëŒ€ 10ê°œê¹Œì§€ & í•œë‹¬ ë³´ê´€í•œë‹¤ê³  ê°€ì • / ëª¨ë“  ë§¤ì¹˜ê¸°ë¡ë“¤ì€ LogDBì— ì ì¬.
+-- ê°œë°œí¸ì˜ìƒ í•œë²ˆì˜ ë§¤ì¹˜í›„ ë‘ê°œì˜ ë¡œìš°ê°€ Insert.
 create table match_history
 (
-	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ´ëÃ¼ Å°
-	user_idx bigint not null,											-- À¯Àú °íÀ¯ °ª
-	opponent_user_idx bigint not null,									-- »ó´ë À¯Àú °íÀ¯ °ª
-	result tinyint not null,											-- °á°ú
-	score int not null,													-- È¹µæ Á¡¼ö
-	opponent_score int not null,										-- »ó´ëÆí È¹µæ Á¡¼ö
-	user_info_list	nvarchar(300) not null,								-- ³»°¡ »ç¿ëÇÑ ½ºÅ³, ¾ÆÀÌÅÛ ¸®½ºÆ®
-	opponent_info_list nvarchar(300) not null,							-- »ó´ëÆíÀÌ »ç¿ëÇÑ ½ºÅ³, ¾ÆÀÌÅÛ ¸®½ºÆ®
-	match_time int not null,											-- °ÔÀÓ ½Ã°£
-	match_start_date datetime not null,									-- ¸ÅÄ¡ ½ÃÀÛ ½Ã°£
-	match_end_date datetime not null									-- ¸ÅÄ¡ Á¾·á ½Ã°£
+	seq_key bigint IDENTITY (1, 1) not null primary key,				-- ëŒ€ì²´ í‚¤
+	match_idx bigint not null,											-- ë§¤ì¹˜ ê³ ìœ ê°’ / ì„œë²„ë‹¨ì—ì„œ ê³ ìœ ê°’ / ë°œê¸‰ Redis Incr or snowflake_id ë“±ì„ ì‚¬ìš©í•œ í‹°ì¼“ì„œë²„ 
+																		-- í•œë²ˆì˜ ë§¤ì¹˜ì—ì„œ í¸ì˜ìƒ ë‘ê°œì˜ ë¡œìš°ê°€ ì¸ì„œíŠ¸ ë˜ê¸° ë•Œë¬¸ì— db auto_incrë“± ì‚¬ìš© ë¶ˆê°€.
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ  ê°’
+	opponent_user_idx bigint not null,									-- ìƒëŒ€ ìœ ì € ê³ ìœ  ê°’
+	[result] tinyint not null,											-- ê²°ê³¼
+	score int not null,													-- íšë“ ì ìˆ˜
+	opponent_score int not null,										-- ìƒëŒ€í¸ íšë“ ì ìˆ˜
+	user_info_list	nvarchar(300) not null,								-- ë‚´ê°€ ì‚¬ìš©í•œ ìŠ¤í‚¬, ì•„ì´í…œ ë¦¬ìŠ¤íŠ¸
+	opponent_info_list nvarchar(300) not null,							-- ìƒëŒ€í¸ì´ ì‚¬ìš©í•œ ìŠ¤í‚¬, ì•„ì´í…œ ë¦¬ìŠ¤íŠ¸
+	match_time int not null,											-- ê²Œì„ ì‹œê°„
+	match_start_date datetime not null,									-- ë§¤ì¹˜ ì‹œì‘ ì‹œê°„
+	match_end_date datetime not null									-- ë§¤ì¹˜ ì¢…ë£Œ ì‹œê°„
 )
+create index ix_match_history_user_idx ON match_history(user_idx, seq_key desc)  -- ìµœì‹  10ê°œë§Œ ì¡°íšŒí•˜ê¸° ìœ„í•´
+create index ix_match_history_end_date ON match_history(match_end_date)			 -- ë°°ì¹˜ì‚­ì œìš©
 
--- ÀÎ°ÔÀÓ¿¡¼­ º¸¿©Áö´Â »óÀ§ n¸í Å×ÀÌºí
--- ÀÏ´ÜÀ§·Î Á¤»êÈÄ ÃÖ½ÅÈ­ (¾Æ·¡ leader_board Å×ÀÌºí¿¡¼­ ½º³À¼¦Ã³¸® ÈÄ ÇØ´ç Å×ÀÌºí¿¡ insert)
--- ½Ç½Ã°£ ·©Å·ÇÊ¿äÇÏ¸é ·¹µğ½º »ç¿ë °í·Á ÇÊ¿ä
+ 
+-- ì¸ê²Œì„ì—ì„œ ë³´ì—¬ì§€ëŠ” ìƒìœ„ nëª… í…Œì´ë¸”
+-- ì¼ë‹¨ìœ„ë¡œ ì •ì‚°í›„ ìµœì‹ í™” (ì•„ë˜ leader_board í…Œì´ë¸”ì—ì„œ ìŠ¤ëƒ…ìƒ·ì²˜ë¦¬ í›„ í•´ë‹¹ í…Œì´ë¸”ì— insert)
+-- ì‹¤ì‹œê°„ ë­í‚¹í•„ìš”í•˜ë©´ ë ˆë””ìŠ¤ ì‚¬ìš© ê³ ë ¤ í•„ìš”
+-- ì„œë²„ì—ì„œ í•´ë‹¹ í…Œì´ë¸”ì„ ì „ì²´ ìºì‹±í•´ì„œ í´ë¼ì´ì–¸íŠ¸ë“¤í•œí…Œ ë³´ì—¬ì¤€ë‹¤.
 create table daily_ranking(
-	[rank] int IDENTITY (1, 1) not null primary key,					-- ¼øÀ§
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	[user_name] nvarchar(20) not null,									-- À¯ÀúÀÌ¸§	
-	score	int not null,												-- Á¡¼ö
+	[rank] int IDENTITY (1, 1) not null primary key,					-- ìˆœìœ„
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	[user_name] nvarchar(20) not null,									-- ìœ ì €ì´ë¦„	
+	score	int not null												-- ì ìˆ˜
 )
 
--- ½ÃÁğ ´ÜÀ§·Î ÇöÀç °ÔÀÓÁßÀÎ À¯ÀúµéÀÇ Á¡¼ö ÀúÀåÇÏ´Â ¸®´õº¸µå
--- ¾ÆÄ«ÀÌºù Ã³¸® ÇÊ¿äÇÒ¼öµµ
+-- ì‹œì¦Œ ë‹¨ìœ„ë¡œ í˜„ì¬ ê²Œì„ì¤‘ì¸ ìœ ì €ë“¤ì˜ ì ìˆ˜ ì €ì¥í•˜ëŠ” ë¦¬ë”ë³´ë“œ
+-- ì•„ì¹´ì´ë¹™ ì²˜ë¦¬ í•„ìš”í• ìˆ˜ë„
+-- or ì‹œì¦Œë³„ë¡œ í…Œì´ë¸” ìƒˆë¡œ ìƒì„±í•´ì„œ í•˜ëŠ” ë°©ë²•
 create table leader_board(
-	season_idx int not null,											-- ½ÃÁğÀÎµ¦½º
-	user_idx bigint not null,											-- À¯Àú °íÀ¯°ª
-	score int not null,													-- ÇØ´ç ½ÃÁğ Á¡¼ö
-	created_date datetime not null,										-- ½ÃÁğ ÁøÀÔÀÏ
-	updated_date datetime not null,										-- Á¡¼ö º¯µ¿ÀÏ
+	season_idx int not null,											-- ì‹œì¦Œì¸ë±ìŠ¤
+	user_idx bigint not null,											-- ìœ ì € ê³ ìœ ê°’
+	score int not null default 0,										-- í•´ë‹¹ ì‹œì¦Œ ì ìˆ˜
+	created_date datetime not null default getdate(),					-- ì‹œì¦Œ ì§„ì…ì¼
+	updated_date datetime not null default getdate(),					-- ì ìˆ˜ ë³€ë™ì¼
 	CONSTRAINT pk_season_useridx primary key (season_idx, user_idx)	
 )
+create index ix_leader_board_score on leader_board(season_idx,score desc) -- ì¼ì¼ ë­í‚¹ ì‚°ì •ìš© ì¸ë±ìŠ¤
+
