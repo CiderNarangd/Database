@@ -76,7 +76,7 @@ Next log sequence to archive   10
 Current log sequence           10
 
 
-alter database force logging;
+SQL > alter database force logging;
 
 SYS@master > select name, force_logging, log_mode from v$database;
 
@@ -256,6 +256,14 @@ ALTER SYSTEM SET log_archive_dest_1 =
   'LOCATION=/u03/archive_log VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=master' 
 SCOPE=BOTH;
 
+or
+
+ALTER SYSTEM SET log_archive_dest_1 = 
+  'LOCATION=USE_DB_RECOVERY_FILE_DEST VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=master' 
+SCOPE=BOTH;
+
+
+
 -- Destination for standby
 ALTER SYSTEM SET log_archive_dest_2 =
   'service=slave LGWR async noaffirm valid_for=(online_logfiles,primary_role) db_unique_name=slave' SCOPE=both;
@@ -320,7 +328,7 @@ $ vi $ORACLE_HOME/dbs/initslave.ora
 
 db_name=master
 enable_pluggable_database=false
-db_create_file_dest=/u02/oradata/
+db_create_file_dest='/u02/oradata/'
 
 =======================================
 

@@ -168,7 +168,8 @@ yum install -y rlwrap
 
 ** oel 7에선
 [root@oracle19c-m2 ~]# cd /etc/yum.repos.d/
-vi oracle-developer-epel-ol7.repo
+
+# vi /etc/yum.repos.d/oracle-developer-epel-ol7.repo
 
 ========
 
