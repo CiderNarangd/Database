@@ -4,7 +4,7 @@ Xtrabackup Binary Install
 https://www.percona.com/downloads/
 
 glibc 버전 및 mysql 버전에 맞게끔 다운로드
-
+OS Version			- Rocky Linux 9.8
 DB version 			- mysql 8.4.8
 Xtrabackup version 	- 8.4.0-6
 

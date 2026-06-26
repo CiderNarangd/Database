@@ -1,0 +1,123 @@
+Mysql Xtrabackup FullBackup & Restore
+
+##########################################
+#
+# Mysql 8.4 Full Backup / Restore / PITR Recover
+#
+#########################################
+
+OS - RockyLinux 9.8
+DB Version - 8.4.8
+Xtrabackup Version 8.4.0-6
+
+
+// Xtrabackup 계정 생성 & 권한 부여
+
+mysql>
+ CREATE USER 'xtrabackup'@'%' IDENTIFIED BY 'oracle';
+ GRANT BACKUP_ADMIN, PROCESS, RELOAD, LOCK TABLES, REPLICATION SLAVE ON *.* TO 'xtrabackup'@'%';
+ GRANT SELECT ON performance_schema.* TO 'xtrabackup'@'%';
+ FLUSH PRIVILEGES;
+
+
+// Backup Directdory 생성
+$ mkdir -p /u01/mysql/${HOST_NAME}/BACKUP
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/BACKUP
+$ chmod -R 775 /u01/mysql/${HOST_NAME}/BACKUP
+
+### Backup ###
+
+
+$ mkdir -p /u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+$ chmod -R 775 /u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+
+// Full Backup up
+$ xtrabackup \
+	--defaults-file=/etc/my.cnf \
+	--backup \
+    --host=localhost \
+    --user=xtrabackup \
+    --password='oracle' \
+	--no-lock \
+	--parallel=4 \
+	--no-version-check \
+    --target-dir=/u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+
+** innodb 기준이기에 myisam 존재시 no-lock 옵션 제거
+** parallel 옵션은 시스템 사양에 맞게 설정 
+	-> 설정 별 테스트이후 값 설정 권장
+
+	
+// apply-log	
+$ xtrabackup --prepare --parallel=4 --target-dir=/u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+--> 풀백업만 사용하기에 바로 prepare 작업.
+
+// 권한 변경
+$ sudo chown -R mysql:mysql /u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+$ sudo chmod -R 775 /u01/mysql/${HOST_NAME}/BACKUP/${DATE}
+
+
+### Restore ###
+
+// DB Shutdown
+systemctl stop mysqld
+
+//BINLOG 백업
+cp -ra /u01/mysql/${HOST_NAME}/BINLOG /u01/mysql/${HOST_NAME}/BIN_BACKUP
+
+// Directory 삭제
+$ rm -rf /u01/mysql/${HOST_NAME}/DATA/*
+$ rm -rf /u01/mysql/${HOST_NAME}/IBLOG/*
+$ rm -rf /u01/mysql/${HOST_NAME}/BINLOG/*
+
+// Copy-Back 
+$ /usr/local/xtrabackup/bin/xtrabackup \
+	--defaults-file=/etc/my.cnf \
+	--copy-back \
+	--parallel=4 \
+	--target-dir=/u01/mysql/${HOST_NAME}/BACKUP/${최신 백업 디렉토리}
+
+// Change Permission
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/DATA
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/IBLOG
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/BINLOG
+
+// DB 기동
+$ systemctl start mysqld
+
+
+// 최신 데이터까지 Recover
+$ cat /u01/mysql/${HOST_NAME}/BACKUP/${최신 백업 디렉토리}/xtrabackup_binlog_info
+mysql-bin.000056        158
+
+--> 56번 파일 158까지 백업되어 있음
+
+$ mysqlbinlog \
+    --start-position=158 \
+    /u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000056 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000057 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000058 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000059 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000060 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000061 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000062 \
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000063 \
+	...
+	...
+	/u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000099 \
+| mysql -u root -p
+
+**특정시점
+mysqlbinlog \
+    --start-position=158 \
+    --stop-datetime="2026-06-26 20:45:00" \
+	or 
+	--stop-position=123456
+    /u01/mysql/${HOST_NAME}/BIN_BACKUP/mysql-bin.000056 \
+    ...
+| mysql -u root -p
+
+// 데이터 확인 후 서비스 오픈
+
+
+

@@ -1,0 +1,42 @@
+mysql systemctl 등록
+
+$ su - root
+
+# vi /etc/systemd/system/mysqld.service
+
+=======================================
+
+[Unit]
+Description=MySQL Server
+After=network.target
+
+[Service]
+Type=forking
+
+User=mysql
+Group=mysql
+
+PIDFile=/data/mysql/mysql.pid
+
+ExecStart=/usr/local/mysql/bin/mysqld_safe \
+    --defaults-file=/etc/my.cnf
+
+ExecStop=/usr/local/mysql/bin/mysqladmin \
+    --defaults-file=/etc/my.cnf \
+    shutdown
+
+LimitNOFILE=65535
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+=====================================================
+
+systemctl daemon-reload
+systemctl enable mysqld
+systemctl status mysqld
+systemctl stop mysqld
+systemctl start mysqld
