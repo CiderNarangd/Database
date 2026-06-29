@@ -98,25 +98,23 @@ Vagrantfile 생성
 ========================================
 
 Vagrant.configure("2") do |config|
-
-  config.vm.box = "rocky9-mysql-base"
-  config.ssh.username = "kinam"
+  config.vm.box = "rocky9-mysql-base"  # 사용할 패키지명 
+  config.ssh.username = "kinam"		   	
   config.ssh.password = "oracle"
+  config.vm.hostname = "mysql-vagrant" 					# linux host name
   
-  config.ssh.host = "192.168.56.205"
-  config.ssh.port = 22  
+  NEW_IP = "192.168.56.205"
   
   config.vm.provider "virtualbox" do |vb|
-    
-    vb.customize ["modifyvm", :id, "--nic1", "hostonly"]
-    vb.customize ["modifyvm", :id, "--hostonlyadapter1", "VirtualBox Host-Only Ethernet Adapter"]
-    
-    vb.customize ["modifyvm", :id, "--nic2", "nat"]
+    vb.name = "mysql-vagrant"							# virtualbox machie name
+    vb.customize ["modifyvm", :id, "--nic1", "nat"]
+    vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+    vb.customize ["modifyvm", :id, "--hostonlyadapter2", "VirtualBox Host-Only Ethernet Adapter"]
 
   end
 	
   # host-only 고정할 ip 설정	
-  config.vm.network "private_network", ip: "192.168.56.205", adapter: 1
+  config.vm.network "private_network", ip: NEW_IP, adapter: 1
   
 end
 
@@ -203,7 +201,7 @@ Vagrant.configure("2") do |config|
       end
 
       node.vm.network "private_network", ip: box[:ip], adapter: 2
-
+	  # node.vm.provision "shell", path: "setup.sh"	
     end
   end
 
@@ -214,6 +212,14 @@ end
 
 vagrant up
 
+
+
+Vagrantfile에서 아래 코드 추가 후 
+
+config.vm.provision "shell", path: "setup.sh"
+
+동일한 디렉토리에 setup.sh 스크립트 작성
+vm 생성 직후 setup.sh 스크립트 자동 실행
 
 
 
