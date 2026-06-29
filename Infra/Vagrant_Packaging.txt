@@ -1,0 +1,249 @@
+Vagrant
+
+============= Vagrant_virtualbox_packaging============
+
+// Guest Addition Install
+
+-- 설치 확인
+$ lsmod | grep vboxguest
+vboxguest             548864  3 vboxsf
+
+$ systemctl status sshd
+ ...
+ Active: active (running) since Tue 2026-06-30 00:37:07 KST; 23min ago
+ ...
+
+// 패키징할 호스트 세팅
+
+$ vi /etc/ssh/sshd_config
+PasswordAuthentication yes
+
+$ selinux, 방화벽 등 해제 or 설정
+
+-- 네트워크 
+1. NAT
+2. host-only-adapter -> ip 하드코딩 되어 있으면 제거
+
+--> 둘다 dhcp auto로 설정
+
+
+// vagrant 계정대신 kinam 계정사용
+
+[kinam@mysqltemplate downloads]$ sudo -l
+[sudo] password for kinam:                                            
+Matching Defaults entries for kinam on mysqltemplate:
+    !visiblepw, always_set_home, match_group_by_gid, always_query_group_plugin, env_reset, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE KDEDIR LS_COLORS",
+    env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE", env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES",
+    env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE", env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY",
+    secure_path=/sbin\:/bin\:/usr/sbin\:/usr/bin
+
+User kinam may run the following commands on mysqltemplate:
+    (ALL) ALL
+	
+
+$ sudo vi /etc/sudoers.d/kinam
+kinam ALL=(ALL) NOPASSWD:ALL
+sudo chmod 440 /etc/sudoers.d/kinam
+
+
+
+	
+// VM 종료
+
+$ sudo shutdown -h now
+
+
+C:\Program Files\Oracle\VirtualBox>VBoxManage list vms
+...
+"mysqltemplate" {fc503240-d8d3-4944-bfda-a7270fa180c4}
+...
+
+
+// 디렉토리 생성
+
+> mkdir E:\Git2\Database\Infra\my_vagrant
+> cd E:\Git2\Database\Infra\my_vagrant
+
+> vagrant package --base mysqltemplate --output rocky9-mysql-template.box 
+
+==> mysqltemplate: Exporting VM...
+==> mysqltemplate: Compressing package to: E:/Git2/Database/Infra/my_vagrant/rocky9-mysql-template.box
+
+-- 디렉토리에 생성된 .box 파일 확인
+
+> vagrant box add rocky9-mysql-base rocky9-mysql-template.box
+
+==> box: Box file was not detected as metadata. Adding it directly...
+==> box: Adding box 'rocky9-mysql-base' (v0) for provider: (amd64)
+    box: Unpacking necessary files from: file://E:/Git2/Database/Infra/my_vagrant/rocky9-mysql-template.box
+    box:
+==> box: Successfully added box 'rocky9-mysql-base' (v0) for '(amd64)'!
+
+
+> vagrant box list
+generic/rocky9    (virtualbox, 4.3.12, (amd64))
+rocky9-mysql-base (virtualbox, 0, (amd64))
+
+
+
+-------------------------------------------------------------------------------------------------------
+
+// mysql single instance 배포
+
+> mkdir E:\Git2\Database\Infra\my_vagrant\mysql-single
+> cd E:\Git2\Database\Infra\my_vagrant\mysql-single
+
+Vagrantfile 생성
+
+========================================
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "rocky9-mysql-base"
+  config.ssh.username = "kinam"
+  config.ssh.password = "oracle"
+  
+  config.ssh.host = "192.168.56.205"
+  config.ssh.port = 22  
+  
+  config.vm.provider "virtualbox" do |vb|
+    
+    vb.customize ["modifyvm", :id, "--nic1", "hostonly"]
+    vb.customize ["modifyvm", :id, "--hostonlyadapter1", "VirtualBox Host-Only Ethernet Adapter"]
+    
+    vb.customize ["modifyvm", :id, "--nic2", "nat"]
+
+  end
+	
+  # host-only 고정할 ip 설정	
+  config.vm.network "private_network", ip: "192.168.56.205", adapter: 1
+  
+end
+
+=================================================
+
+> vagrant up
+
+Bringing machine 'default' up with 'virtualbox' provider...
+==> default: Importing base box 'rocky9-mysql-base'...
+==> default: Matching MAC address for NAT networking...
+==> default: Setting the name of the VM: mysql-single_default_1782755759234_12313
+==> default: Clearing any previously set network interfaces...
+==> default: Preparing network interfaces based on configuration...
+    default: Adapter 1: hostonly
+==> default: Forwarding ports...
+    default: 22 (guest) => 2222 (host) (adapter 1)
+    default: VirtualBox adapter #1 not configured as "NAT". Skipping port
+    default: forwards on this adapter.
+==> default: Running 'pre-boot' VM customizations...
+==> default: Booting VM...
+==> default: Waiting for machine to boot. This may take a few minutes...
+    default: SSH address: 192.168.56.200:22
+    default: SSH username: kinam
+    default: SSH auth method: password
+    default: 
+    default: Inserting generated public key within guest...
+    default: Removing insecure key from the guest if it's present...
+    default: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> default: Machine booted and ready!
+==> default: Checking for guest additions in VM...
+==> default: Configuring and enabling network interfaces...
+==> default: Mounting shared folders...
+    default: E:/Git2/Database/Infra/my_vagrant/mysql-single => /vagrant
+
+
+
+> vagrant ssh
+ - 리눅스 터미널 접속 확인
+ 
+> vagrant halt
+
+** 디렉토리에 머신 생성되자마자 실행될 스크립트가 필요한 경우 Vagrantfile과 같은 폴더에 setup.sh 스크립트 작성
+config.vm.provision "shell", path: "setup.sh"
+
+
+** 동일한 스펙의 호스트가 필요하면 폴더 생성후 Vagrantfile 복사 후 수정 
+   vagrant up
+
+
+------------------------------------------------------------------------------------------------
+
+Vagrant Multi Deploy
+
+mkdir E:\Git2\Database\Infra\my_vagrant\mysql-replication
+cd E:\Git2\Database\Infra\my_vagrant\mysql-replication
+
+
+Vagrantfile 생성
+========================================================
+
+Vagrant.configure("2") do |config|
+
+  # 공통 설정
+  boxes = [
+    { name: "mysql-master", ip: "192.168.56.210" },
+    { name: "mysql-slave", ip: "192.168.56.211" },
+  ]
+
+  boxes.each do |box|
+    config.vm.define box[:name] do |node|
+      node.vm.box      = "rocky9-mysql-base"
+      node.vm.hostname = box[:name]
+
+      node.ssh.username = "kinam"
+      node.ssh.password = "oracle"
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name   = box[:name]
+        vb.memory = 2048
+        vb.cpus   = 2
+        vb.customize ["modifyvm", :id, "--nic1", "nat"]
+        vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+        vb.customize ["modifyvm", :id, "--hostonlyadapter2", "VirtualBox Host-Only Ethernet Adapter"]
+      end
+
+      node.vm.network "private_network", ip: box[:ip], adapter: 2
+
+    end
+  end
+
+end
+
+
+========================================================
+
+vagrant up
+
+
+
+
+------------------------------------------------------------------------------------------------
+***
+vagrant package --base mysqltemplate --output rocky9-mysql-template.box
+
+vagrant destroy -f
+
+vagrant box list
+vagrant box remove rocky9-mysql-base
+vagrant box remove rocky9-mysql-base -all
+vagrant box add rocky9-mysql-base rocky9-mysql-template.box
+
+
+vagrant global-status
+id       name    provider   state   directory
+------------------------------------------------------------------------------------
+5364c3b  default virtualbox poweroff E:/Git2/Database/Infra/my_vagrant/mysql-single
+6bc7831  default virtualbox running  E:/Git2/Database/Infra/my_vagrant/mysql-single2
+
+vagrant up <ID>
+vagrant halt <ID>
+vagrant reload <ID>
+
+--Multi-vm
+vagrant up db01 
+vagrant halt db02 
+vagrant ssh db01 
+
+-- 일괄 시작/종료는 스크립트로 running/poweroff 만 뽑아서 스크립트 작성
+
+

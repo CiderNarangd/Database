@@ -1,0 +1,108 @@
+Vagrant 
+
+============= Vagrant Virtualbox VM Deploy ============
+
+Vagrant Version - 2.4.9
+Virtualbox Version - 7.2.10r174163
+Windwos Version - windows 11 
+cpu_arc - amd64
+
+
+
+//In CMD
+> mkdir E:\Git2\Database\Infra\Vagrant
+
+
+** https://portal.cloud.hashicorp.com/vagrant/discover
+	-> Template Download
+
+> cd E:\Git2\Database\Infra\Vagrant
+> vagrant init generic/rocky9
+or
+> vagrant init generic/rocky9 --box-version 4.3.12
+
+-- Vagrantfile 생성 확인
+
+Vagrantfile -> 주석들 제거
+=========================================
+
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "generic/rocky9"
+  
+end
+
+==============================================
+
+> vagrant up
+
+Bringing machine 'default' up with 'virtualbox' provider...
+==> default: Box 'generic/rocky9' could not be found. Attempting to find and install...
+    default: Box Provider: virtualbox
+    default: Box Version: >= 0
+==> default: Loading metadata for box 'generic/rocky9'
+    default: URL: https://vagrantcloud.com/api/v2/vagrant/generic/rocky9
+==> default: Adding box 'generic/rocky9' (v4.3.12) for provider: virtualbox (amd64)
+    default: Downloading: https://vagrantcloud.com/generic/boxes/rocky9/versions/4.3.12/providers/virtualbox/amd64/vagrant.box
+    default:
+    default: Calculating and comparing box checksum...
+==> default: Successfully added box 'generic/rocky9' (v4.3.12) for 'virtualbox (amd64)'!
+==> default: Importing base box 'generic/rocky9'...
+==> default: Matching MAC address for NAT networking...
+==> default: Checking if box 'generic/rocky9' version '4.3.12' is up to date...
+==> default: Setting the name of the VM: Vagrant_default_1782747656390_58707
+==> default: Clearing any previously set network interfaces...
+==> default: Preparing network interfaces based on configuration...
+    default: Adapter 1: nat
+==> default: Forwarding ports...
+    default: 22 (guest) => 2222 (host) (adapter 1)
+==> default: Running 'pre-boot' VM customizations...
+==> default: Booting VM...
+==> default: Waiting for machine to boot. This may take a few minutes...
+    default: SSH address: 127.0.0.1:2222
+    default: SSH username: vagrant
+    default: SSH auth method: private key
+    default: 
+    default: Vagrant insecure key detected. Vagrant will automatically replace
+    default: this with a newly generated keypair for better security.
+    default: 
+    default: Inserting generated public key within guest...
+    default: Removing insecure key from the guest if it's present...
+    default: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> default: Machine booted and ready!
+==> default: Checking for guest additions in VM...
+    default: The guest additions on this VM do not match the installed version of
+    default: VirtualBox! In most cases this is fine, but in rare cases it can
+    default: prevent things such as shared folders from working properly. If you see
+    default: shared folder errors, please make sure the guest additions within the
+    default: virtual machine match the version of VirtualBox you have installed on
+    default: your host and reload your VM.
+    default:
+    default: Guest Additions Version: 6.1.48
+    default: VirtualBox Version: 7.2
+
+// 생성된 호스트 확인
+C:\Program Files\Oracle\VirtualBox > VBoxManage.exe list vms
+"OracleTemplate" {baf6b93a-c649-4da4-bb90-567102870ee3}
+"orcl-19c-si" {92a923e3-9cf2-47e8-885e-7cb743118717}
+"orcl-19c-dg-primary" {883a33ea-5ff3-4f8b-aa98-45f094670fac}
+"orcl-19c-dg-standby" {1610a5fc-9ed6-4a22-9656-a1ccfa53af5c}
+"orcl-19c-rac01" {01cb18d1-dc5a-42f3-bec3-09c8a71bf1f2}
+"mysqltemplate" {fc503240-d8d3-4944-bfda-a7270fa180c4}
+"orcl-19c-rman" {c643b382-e44e-4125-a096-b0c1c500b8b9}
+"orcl-19c-rac02" {f725e155-2a48-4b07-b104-e6be29c4d165}
+"orcl-19c-rac03" {7709e002-d2ce-4c3e-83a5-c21fd47534d3}
+"Manager" {b3e72232-fc7d-4295-86ee-4d635e9fcca0}
+"mysql-84-source" {baa21bf6-1a83-4762-8f3a-57f5b246c7ae}
+"mysql-84-replica" {25652af1-3ae1-4879-b049-bb00def54b49}
+"Vagrant_default_1782747656390_58707" {214c7b62-8920-42a2-9fa8-5b72f5c989b7}
+
+	
+// 접속 확인
+> vagrant ssh
+	
+vagrant//vagrant	
+
+// 호스트 제거
+> vagrant destroy -f

@@ -1,0 +1,19 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "rocky9-mysql-base"
+  config.ssh.username = "kinam"
+  config.ssh.password = "oracle"
+
+  NEW_IP = "192.168.56.205"
+
+  config.vm.hostname = "mysql-vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "mysql-vagrant"
+    vb.customize ["modifyvm", :id, "--nic1", "nat"]        
+    vb.customize ["modifyvm", :id, "--nic2", "hostonly"]   
+    vb.customize ["modifyvm", :id, "--hostonlyadapter2", "VirtualBox Host-Only Ethernet Adapter"]
+  end
+
+  config.vm.network "private_network", ip: NEW_IP, adapter: 2 
+
+end
