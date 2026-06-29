@@ -229,6 +229,9 @@ vagrant box remove rocky9-mysql-base -all
 vagrant box add rocky9-mysql-base rocky9-mysql-template.box
 
 
+vagrant provision
+vagrant reload --provision
+
 vagrant global-status
 id       name    provider   state   directory
 ------------------------------------------------------------------------------------

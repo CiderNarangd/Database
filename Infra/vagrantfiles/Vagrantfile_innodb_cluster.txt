@@ -1,0 +1,32 @@
+Vagrant.configure("2") do |config|
+
+  boxes = [
+    { name: "mysql-node1", ip: "192.168.56.220", machine_name: "vagrant-mysql-node1" },
+    { name: "mysql-node2", ip: "192.168.56.221", machine_name: "vagrant-mysql-node2" },
+    { name: "mysql-node3", ip: "192.168.56.222", machine_name: "vagrant-mysql-node3" },
+    { name: "mysql-router", ip: "192.168.56.223", machine_name: "vagrant-mysql-router" },
+  ]
+
+  boxes.each do |box|
+    config.vm.define box[:name] do |node|
+      node.vm.box      = "rocky9-mysql-base"
+      node.vm.hostname = box[:machine_name]
+
+      node.ssh.username = "kinam"
+      node.ssh.password = "oracle"
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name   = box[:name]
+        vb.memory = box[:name] == "mysql-router" ? 1024 : 2048  # router는 메모리 절약
+        vb.cpus   = 2
+        vb.customize ["modifyvm", :id, "--nic1", "nat"]
+        vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+        vb.customize ["modifyvm", :id, "--hostonlyadapter2", "VirtualBox Host-Only Ethernet Adapter"]
+      end
+
+      node.vm.network "private_network", ip: box[:ip], adapter: 2
+
+    end
+  end
+
+end
