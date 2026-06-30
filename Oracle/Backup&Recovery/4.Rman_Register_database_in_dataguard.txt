@@ -1,0 +1,14 @@
+Rman Register database in Dataguard
+
+-- Dataguard 환경에서는 Rman Catalog 최초 DB 등록시 
+   Primary로 등록시켜야함 (dataguard 환경에서는 instance는 다를지라도 같은 db_id를 사용)
+
+//In Primary
+$ rman TARGET / CATALOG ruser/ruser@rman_remote
+RMAN > register database;
+
+//In Stnadby
+$ rman TARGET / CATALOG ruser/ruser@rman_remote
+RMAN > report schema;
+
+--> Schema 잘 나올시 정상
