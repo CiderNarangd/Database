@@ -22,6 +22,7 @@ DATA_DIR=/u01/mysql/${HOSTNAME}/DATA
 LOG_DIR=/u01/mysql/${HOSTNAME}/ADMIN
 BIN_DIR=/u01/mysql/${HOSTNAME}/BINLOG
 IBLOG_DIR=/u01/mysql/${HOSTNAME}/IBLOG
+RELAY_DIR=/u01/mysql/${HOSTNAME}/IBLOG
 
 MYSQL_TAR=/storage/downloads/mysql-9.7.0-linux-glibc2.28-x86_64.tar.xz   # check tar file name & dir
 EXTRACT_DIR="mysql-9.7.0-linux-glibc2.28-x86_64"
@@ -67,7 +68,7 @@ echo -e "\n"
 # [3] 디렉토리 생성 및 권한
 # ============================================================
 log "[STEP 2] Make Directory & Change Ownership"
-mkdir -p ${DATA_DIR} ${LOG_DIR} ${BIN_DIR} ${IBLOG_DIR} 2>&1 | tee -a "$LOG"
+mkdir -p ${DATA_DIR} ${LOG_DIR} ${BIN_DIR} ${IBLOG_DIR} ${RELAY_DIR} 2>&1 | tee -a "$LOG"
 
 chown -R ${MYSQL_USER}:${MYSQL_GROUP} /u01 2>&1 | tee -a "$LOG"
 chmod -R 775 /u01 2>&1 | tee -a "$LOG"

@@ -3,12 +3,14 @@ Mysql bash_profile & bashrc
 
 .bash_profile
 ===============================================================
+export HOST_NAME=$(hostname -s)
+
 export MYSQL_HOME=/usr/local/mysql
 export MYSQL_HOME=$MYSQL_BASE
-export DATADIR=/u01/mysql/mysql97-m/DATA
-export BINDIR=/u01/mysql/mysql97-m/BINLOG
-export REDODIR=/u01/mysql/mysql97-m/IBLOG
-export ADMINDIR=/u01/mysql/mysql97-m/ADMIN
+export DATADIR=/u01/mysql/${HOST_NAME}/DATA
+export BINDIR=/u01/mysql/${HOST_NAME}/BINLOG
+export REDODIR=/u01/mysql/${HOST_NAME}/IBLOG
+export ADMINDIR=/u01/mysql/${HOST_NAME}/ADMIN
 
 export PATH=$MYSQL_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
@@ -22,14 +24,14 @@ export TMPDIR=/tmp
 .bashrc
 ===============================================================
 
-alias mylog='tail -f /u01/mysql/mysql97-m/ADMIN/error_log.log'
+alias mylog='tail -f /u01/mysql/${HOST_NAME}/ADMIN/error_log.log'
 alias mycnf='vi /etc/my.cnf'
 
-alias data='cd /u01/mysql/mysql97-m/DATA/'
-alias admin='cd /u01/mysql/mysql97-m/ADMIN/'
-alias binlog='cd /u01/mysql/mysql97-m/BINLOG/'
-alias redo='cd /u01/mysql/mysql97-m/IBLOG/'
-alias relay='cd /u01/mysql/mysql97-m/RELAY/'
+alias data='cd /u01/mysql/${HOST_NAME}/DATA/'
+alias admin='cd /u01/mysql/${HOST_NAME}/ADMIN/'
+alias binlog='cd /u01/mysql/${HOST_NAME}/BINLOG/'
+alias redo='cd /u01/mysql/${HOST_NAME}/IBLOG/'
+alias relay='cd /u01/mysql/${HOST_NAME}/RELAY/'
 
 alias qq='mysql --login-path=local_root'
 

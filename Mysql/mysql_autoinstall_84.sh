@@ -117,9 +117,9 @@ binlog_expire_logs_seconds = 604800
 # Replication related settings
 ########################################
 
-replicate-ignore-db = sys
-replicate-ignore-db = information_schema
-replicate-ignore-db = performance_schema
+#replicate-ignore-db = sys
+#replicate-ignore-db = information_schema
+#replicate-ignore-db = performance_schema
 
 
 skip-name-resolve
