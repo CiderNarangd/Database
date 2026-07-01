@@ -22,6 +22,7 @@ DATA_DIR=/u01/mysql/${HOSTNAME}/DATA
 LOG_DIR=/u01/mysql/${HOSTNAME}/ADMIN
 BIN_DIR=/u01/mysql/${HOSTNAME}/BINLOG
 IBLOG_DIR=/u01/mysql/${HOSTNAME}/IBLOG
+RELAY_DIR=/u01/mysql/${HOSTNAME}/RELAY
 
 MYSQL_TAR=/storage/downloads/mysql-8.4.8-linux-glibc2.28-x86_64.tar   # check tar file name & dir
 EXTRACT_DIR="mysql-8.4.8-linux-glibc2.28-x86_64"
@@ -67,7 +68,7 @@ echo -e "\n"
 # [3] 디렉토리 생성 및 권한
 # ============================================================
 log "[STEP 2] Make Directory & Change Ownership"
-mkdir -p ${DATA_DIR} ${LOG_DIR} ${BIN_DIR} ${IBLOG_DIR} 2>&1 | tee -a "$LOG"
+mkdir -p ${DATA_DIR} ${LOG_DIR} ${BIN_DIR} ${IBLOG_DIR} ${RELAY_DIR} 2>&1 | tee -a "$LOG"
 
 chown -R ${MYSQL_USER}:${MYSQL_GROUP} /u01 2>&1 | tee -a "$LOG"
 chmod -R 775 /u01 2>&1 | tee -a "$LOG"
@@ -90,6 +91,9 @@ socket          = /u01/mysql/${HOSTNAME}/DATA/mysql.sock
 #password       = your_password
 
 [mysqld]
+server_id		= 1
+pid-file 		= /u01/mysql/${HOSTNAME}/DATA/mysqld.pid
+
 #data dir
 basedir         = /usr/local/mysql
 datadir         = /u01/mysql/${HOSTNAME}/DATA
@@ -100,6 +104,38 @@ log-bin         = /u01/mysql/${HOSTNAME}/BINLOG/mysql-bin
 
 innodb_log_group_home_dir = /u01/mysql/${HOSTNAME}/IBLOG
 innodb_data_home_dir      = /u01/mysql/${HOSTNAME}/DATA
+innodb_buffer_pool_size   = 4G
+
+relay-log       = /u01/mysql/${HOSTNAME}/RELAY/mysql-relay-bin
+relay-log-index = /u01/mysql/${HOSTNAME}/RELAY/mysql-relay-bin.index
+
+log_slave_updates
+
+binlog_expire_logs_seconds = 604800
+
+########################################
+# Replication related settings
+########################################
+
+replicate-ignore-db = sys
+replicate-ignore-db = information_schema
+replicate-ignore-db = performance_schema
+
+
+skip-name-resolve
+max_connections				= 2000
+max_allowed_packet        	= 64M
+
+lower_case_table_names                         = 1
+binlog_cache_size                              = 4M
+binlog_format                                  = MIXED
+binlog_row_image                               = MINIMAL
+
+[mysqldump]
+quick
+max_allowed_packet                             = 64M
+default-character-set                          = utf8mb4
+
 
 EOF
 chown ${MYSQL_USER}:${MYSQL_GROUP} /etc/my.cnf 

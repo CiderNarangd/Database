@@ -9,26 +9,20 @@ $ su - root
 [Unit]
 Description=MySQL Server
 After=network.target
+After=syslog.target
 
 [Service]
-Type=forking
-
+Type=notify
 User=mysql
 Group=mysql
 
-PIDFile=/data/mysql/mysql.pid
-
-ExecStart=/usr/local/mysql/bin/mysqld_safe \
-    --defaults-file=/etc/my.cnf
-
-ExecStop=/usr/local/mysql/bin/mysqladmin \
-    --defaults-file=/etc/my.cnf \
-    shutdown
-
-LimitNOFILE=65535
+ExecStart=/usr/local/mysql/bin/mysqld --defaults-file=/etc/my.cnf
 
 Restart=on-failure
-RestartSec=5
+RestartSec=10
+
+LimitNOFILE=65535
+LimitNPROC=65535
 
 [Install]
 WantedBy=multi-user.target

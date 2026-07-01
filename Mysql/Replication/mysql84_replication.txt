@@ -1,0 +1,208 @@
+Mysql Replication 
+
+DB Version - 8.4.8
+OS Version - Rocky 9.8
+
+Source  host - mysql-84-source  // 192.168.56.201
+Replica host - mysql-84-replica // 192.168.56.202
+
+
+// Modify mysql server-id
+
+$ vi /etc/my.cnf
+-- In Source
+ server-id=1
+
+-- In Replica
+ server-id=2
+ read-only = 1 -- 필요시 설정
+
+// Create Replication User in Source
+create user 'replica'@'%' identified by 'oracle';
+grant replication slave on *.* to 'replica'@'%'; 	
+flush privileges;
+
+
+// Perform a full backup on the Source host
+
+-- Mkdir Backup dir in source,replica
+$ mkdir -p /home/kinam/backup
+$ chmod -R 775 /home/kinam/backup
+
+-- Progress backup
+$ xtrabackup \
+	--defaults-file=/etc/my.cnf \
+	--backup \
+    --host=localhost \
+    --user=xtrabackup \
+    --password='oracle' \
+	--no-lock \
+	--parallel=4 \
+	--no-version-check \
+    --target-dir=/home/kinam/backup
+	
+$ xtrabackup --prepare --parallel=4 --target-dir=/home/kinam/backup
+
+-- Transfer backup to replica
+$ scp -r /home/kinam/backup kinam@mysql-84-replica:/home/kinam/backup
+
+-- In replica change owner
+$ chown -R mysql:mysql /home/kinam/backup
+
+
+// Restore in Replica
+-- Directory 삭제
+$ rm -rf /u01/mysql/${HOST_NAME}/DATA/*
+$ rm -rf /u01/mysql/${HOST_NAME}/IBLOG/*
+$ rm -rf /u01/mysql/${HOST_NAME}/BINLOG/*
+
+-- Copy-Back 
+$ xtrabackup \
+	--defaults-file=/etc/my.cnf \
+	--copy-back \
+	--parallel=4 \
+	--target-dir=/home/kinam/backup
+	
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/DATA
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/IBLOG
+$ chown -R mysql:mysql /u01/mysql/${HOST_NAME}/BINLOG
+
+$ systemctl start mysqld
+
+-- 데이터 확인 및 검증
+
+
+// Replication Set
+
+-- xtrabackup info 확인
+
+$ cat /u01/mysql/${HOST_NAME}/DATA/xtrabackup_info
+
+uuid = c74702f0-7574-11f1-8a80-080027e9b87d
+name = 
+tool_name = xtrabackup
+tool_command = --defaults-file=/etc/my.cnf --backup --host=localhost --user=xtrabackup --password=... --no-lock --parallel=4 --no-version-check --target-dir=/home/kinam/backup
+tool_version = 8.4.0-6
+ibbackup_version = 8.4.0-6
+server_version = 8.4.8
+server_flavor = MySQL Community Server - GPL
+start_time = 2026-07-02 02:46:22
+end_time = 2026-07-02 02:46:24
+lock_time = 0
+binlog_pos = filename 'mysql-bin.000487', position '158'
+innodb_from_lsn = 0
+innodb_to_lsn = 47512637
+partial = N
+incremental = N
+format = file
+compressed = N
+encrypted = N
+lock_ddl_type = OFF
+backup_size = 74096865
+
+-- binlog_pos 확인
+ binlog_pos = filename 'mysql-bin.000487', position '158'
+
+-- In replica
+mysql > CHANGE REPLICATION SOURCE TO 
+			SOURCE_HOST = 'mysql-84-source',
+			SOURCE_PORT = 3306,
+			SOURCE_USER = 'replica',
+			SOURCE_PASSWORD = 'oracle',
+			SOURCE_LOG_FILE = 'mysql-bin.000487',
+			SOURCE_LOG_POS = 158,
+			GET_SOURCE_PUBLIC_KEY =1;
+			
+				
+mysql > start replica;
+mysql > stop replica;
+
+mysql > show replica status \G;
+
+*************************** 1. row ***************************
+             Replica_IO_State: Waiting for source to send event
+                  Source_Host: mysql-84-source
+                  Source_User: replica
+                  Source_Port: 3306
+                Connect_Retry: 60
+              Source_Log_File: mysql-bin.000506
+          Read_Source_Log_Pos: 158
+               Relay_Log_File: mysql-84-replica-relay-bin.000022
+                Relay_Log_Pos: 375
+        Relay_Source_Log_File: mysql-bin.000506
+           Replica_IO_Running: Yes		
+          Replica_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Source_Log_Pos: 158
+              Relay_Log_Space: 814
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Source_SSL_Allowed: No
+           Source_SSL_CA_File: 
+           Source_SSL_CA_Path: 
+              Source_SSL_Cert: 
+            Source_SSL_Cipher: 
+               Source_SSL_Key: 
+        Seconds_Behind_Source: 0
+Source_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Source_Server_Id: 1
+                  Source_UUID: 4e3601e4-7165-11f1-a28d-080027e9b87d
+             Source_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+    Replica_SQL_Running_State: Replica has read all relay log; waiting for more updates
+           Source_Retry_Count: 10
+                  Source_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Source_SSL_Crl: 
+           Source_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: 
+           Source_TLS_Version: 
+       Source_public_key_path: 
+        Get_Source_public_key: 1
+            Network_Namespace: 
+1 row in set (0.00 sec)
+
+--> 작동 확인 & 데이터 변경으로 테스트 및 검증
+ Replica_IO_Running: Yes		
+ Replica_SQL_Running: Yes
+
+
+---------------------------------------------
+show binary log status \G;
+show replica status \G;
+show replicas;
+
+start replica;
+stop replica;
+
+stop replica;
+RESET REPLICA ALL;
+
+stop replica;
+set global replica_parallel_workers = 0; -- 멀티스레드 복제 시 잠시 0으로 변경 필요
+set global sql_replica_skip_counter = 1; -- 건너뛰기
+START REPLICA;
+
+FLUSH LOGS;
+show binary logs;
+

@@ -29,6 +29,7 @@ alias data='cd /u01/mysql/mysql97-m/DATA/'
 alias admin='cd /u01/mysql/mysql97-m/ADMIN/'
 alias binlog='cd /u01/mysql/mysql97-m/BINLOG/'
 alias redo='cd /u01/mysql/mysql97-m/IBLOG/'
+alias relay='cd /u01/mysql/mysql97-m/RELAY/'
 
 alias qq='mysql --login-path=local_root'
 
