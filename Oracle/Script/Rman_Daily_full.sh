@@ -14,6 +14,8 @@
 #  ssh-keygen -t rsa -b 4096 
 #  ssh-copy-id -i ~/.ssh/id_rsa.pub oracle@rman_host
 # 
+#  0 6 * * * /bin/sh /${PATH}/script.sh
+#
 # ============================================================
 export ORACLE_BASE=/u01/app/oracle
 export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/dbhome_1

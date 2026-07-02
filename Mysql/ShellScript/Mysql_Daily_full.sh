@@ -14,6 +14,8 @@
 #  /usr/local/xtrabackup/bin
 #  /storage/logs directory needs
 #
+#  0 6 * * * /bin/sh /${PATH}/script.sh
+#
 # ============================================================
 DATE=$(date +%Y%m%d)
 LOG=/storage/logs/my_full_backup_$(date +%Y%m%d).log

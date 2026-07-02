@@ -14,6 +14,9 @@
 # RMAN > CONFIGURE BACKUP OPTIMIZATION ON;
 # 
 # 1번노드에서 실행
+#
+#  0 6 * * * /bin/sh /${PATH}/script.sh
+#
 # ============================================================
 export ORACLE_BASE=/u02/app/oracle
 export ORACLE_HOME=$ORACLE_BASE/product/19.3.0/dbhome_1
