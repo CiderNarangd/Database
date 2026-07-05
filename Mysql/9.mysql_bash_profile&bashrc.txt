@@ -5,6 +5,9 @@ Mysql bash_profile & bashrc
 ===============================================================
 export HOST_NAME=$(hostname -s)
 
+export TEMP=/tmp
+export TMPDIR=/tmp
+
 export MYSQL_HOME=/usr/local/mysql
 export MYSQL_HOME=$MYSQL_BASE
 export DATADIR=/u01/mysql/${HOST_NAME}/DATA
@@ -12,11 +15,10 @@ export BINDIR=/u01/mysql/${HOST_NAME}/BINLOG
 export REDODIR=/u01/mysql/${HOST_NAME}/IBLOG
 export ADMINDIR=/u01/mysql/${HOST_NAME}/ADMIN
 
-export PATH=$MYSQL_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
+#export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
 
-export TEMP=/tmp
-export TMPDIR=/tmp
+export PATH=$XTRABACKUP_HOME/bin:$MYSQL_HOME/bin:
+
 
 ===============================================================
 
@@ -48,7 +50,7 @@ user=root
 password=your_password
 host=localhost
 port=3306
-socket=/data/mysql.sock
+socket=/u01/mysql/${HOST_NAME}/DATAmysql.sock
 
 [mysql]
 prompt=(\\u@\\h) [\\d]>\\_

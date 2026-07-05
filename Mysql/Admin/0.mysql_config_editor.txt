@@ -1,0 +1,24 @@
+Mysql Config Editor
+
+
+$ ll /usr/local/mysql/bin | grep config
+
+-rwxr-xr-x 1 mysql mysql      5136 Dec 15  2025 mysql_config
+-rwxr-xr-x 1 mysql mysql   9770752 Dec 15  2025 mysql_config_editor
+
+--로그인 정보 입력
+$ mysql_config_editor set --login-path=local_root --host=localhost --user=root --password
+
+
+-- alias 등록해서 사용
+vi .bashrc
+alias qq='mysql --login-path=local_root'
+
+
+
+  set [command options]     Sets user name/password/host name/socket/port
+                            for a given login path (section).
+  remove [command options]  Remove a login path from the login file.
+  print [command options]   Print all the options for a specified
+                            login path.
+  reset [command options]   Deletes the contents of the login file.

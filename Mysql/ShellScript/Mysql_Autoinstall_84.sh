@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-#  Mysql 9.7.0 Auto Install Script
-#  OS   : OEL 9.4
+#  Mysql 8.4.0 Auto Install Script
+#  OS   : Rocky 9.4
 #  User : mysql
 #
 # /storage/downloads file check & need dir

@@ -1,0 +1,32 @@
+Mysql Backup Cadtalog Server
+
+// Create Database Schema
+mysql> create database backup_history;
+mysql> 
+
+// 계정 생성 & 권한 부여
+
+-- 다른 서버에서 해당 계정으로 접근하여 쿼리를 날린다.
+mysql> create user backup_admin identified by 'oracle';
+ or
+mysql> create user 'backup_admin'@'192.168.%' identified by 'oracle';
+
+
+mysql> grant select, insert, delete, update, create, drop, alter, index, create view on backup_admin.* to 'backup_admin'@'%';
+mysql> flush privileges;
+
+
+use backup_history;
+
+create table history(
+	seq_key int auto_increment primary key,
+	host_name varchar(50) not null default 'zz',
+	backup_type int not null default 0, 			-- 0 - full, 1 - incremental
+	start_date datetime null,
+	end_date datetime null,
+	duration_seconds INT GENERATED ALWAYS AS (TIMESTAMPDIFF(SECOND, start_date, end_date)) STORED default 0,
+	backup_size bigint not null default 0, 
+	backup_path nvarchar(50) default 'zz',
+	created_date datetime not null default now()
+)
+
