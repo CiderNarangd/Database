@@ -1,0 +1,173 @@
+Mysql GTID Replication
+
+
+// Change Server-ID
+-> 작동중에 변경 가능하지만 편의상 재시작
+ex) set PERSIST binlog_format = ROW
+	set PERSIST gtid_mode 	  = ON
+	..
+	..
+	
+	
+
+-- In Source
+$ vi /etc/my.cnf
+
+server_id 			= 1
+binlog_format       = ROW
+gtid_mode 			= ON
+enforce_gtid_consistency = ON
+
+
+-- In replica
+
+server_id 			= 2
+binlog_format       = ROW
+gtid_mode 			= ON
+enforce_gtid_consistency = ON
+
+** binlog_format -> row 
+why?) 공식 권장사항 / Statement or Mixed 사용할수 있지만 최상의 결과를 위해 row포맷 사용 권장
+
+-- Restart Database
+
+
+// Create Replication User in Source
+create user 'replica'@'%' identified by 'oracle';
+grant replication slave on *.* to 'replica'@'%'; 	
+flush privileges;
+
+
+// Master DB Backup
+--Test용 스키마 생성
+mysql> create database gtid_test;
+mysql> use gtid_test;
+mysql> create table gtid_table
+(
+	col1 int primary key,
+	col2 nvarchar(30),
+	col3 int
+);
+
+mysql> insert into gtid_table values (1,'1',1) 
+
+// Backup & Transfer to replica server
+
+-- In Source
+$ mysqldump -u root -p --all-databases --source-data=2 --single-transaction --routines --triggers > /home/kinam/master_backup.sql
+$ scp /home/kinam/master_backup.sql kinam@mysql-slave:/home/kinam/
+
+-- In replica
+$ ls /home/kinam/master_backup.sql
+/home/kinam/master_backup.sql
+
+$ mysql -u root -p < /home/kinam/master_backup.sql
+
+// Start Replication
+
+mysql> stop replica;
+mysql> reset replica all;
+
+mysql> CHANGE REPLICATION SOURCE TO 
+  SOURCE_HOST = 'mysql-master',
+  SOURCE_USER = 'replica',
+  SOURCE_PASSWORD = 'oracle',
+  SOURCE_PORT = 3306,
+  SOURCE_AUTO_POSITION = 1,
+  GET_SOURCE_PUBLIC_KEY = 1;
+  
+mysql> start replica;
+
+mysql> show replica status \G;
+
+*************************** 1. row ***************************
+             Replica_IO_State: Waiting for source to send event
+                  Source_Host: mysql-master
+                  Source_User: replica
+                  Source_Port: 3306
+                Connect_Retry: 60
+              Source_Log_File: mysql-bin.000003
+          Read_Source_Log_Pos: 916
+               Relay_Log_File: mysql-relay-bin.000002
+                Relay_Log_Pos: 422
+        Relay_Source_Log_File: mysql-bin.000003
+           Replica_IO_Running: Yes
+          Replica_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: sys,information_schema,performance_schema
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Source_Log_Pos: 916
+              Relay_Log_Space: 633
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Source_SSL_Allowed: No
+           Source_SSL_CA_File: 
+           Source_SSL_CA_Path: 
+              Source_SSL_Cert: 
+            Source_SSL_Cipher: 
+               Source_SSL_Key: 
+        Seconds_Behind_Source: 0
+Source_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Source_Server_Id: 1
+                  Source_UUID: ca824353-7913-11f1-9e69-080027dbb89f
+             Source_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+    Replica_SQL_Running_State: Replica has read all relay log; waiting for more updates
+           Source_Retry_Count: 10
+                  Source_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Source_SSL_Crl: 
+           Source_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: ca824353-7913-11f1-9e69-080027dbb89f:1-3
+                Auto_Position: 1			***** <<<< 
+         Replicate_Rewrite_DB: 
+                 Channel_Name: 
+           Source_TLS_Version: 
+       Source_public_key_path: 
+        Get_Source_public_key: 1
+            Network_Namespace: 
+1 row in set (0.00 sec)
+
+-- In Source
+mysql> show replicas;
++-----------+------+------+-----------+--------------------------------------+
+| Server_Id | Host | Port | Source_Id | Replica_UUID                         |
++-----------+------+------+-----------+--------------------------------------+
+|         2 |      | 3306 |         1 | c01f034d-7913-11f1-9d63-080027dbb89f |
++-----------+------+------+-----------+--------------------------------------+
+
+
+-- Command & Trouble Shooting
+
+--> gtid 기반에서는 skil_counter =1; 이 작동하지 않아서 아래 방법 사용.
+
+1.
+-- 1. 슬레이브 복제 중지
+STOP SLAVE;
+
+-- 2. 문제가 된 GTID 번호를 수동으로 실행한 것처럼 세션에 설정
+SET GTID_NEXT = '1a2b3c4d-5e6f-7g8h-9i0j-1234567890ab:100';
+
+-- 3. 내용이 없는 빈 트랜잭션 시작 및 커밋
+BEGIN; COMMIT;
+
+-- 4. GTID 설정을 다시 자동(Automatic)으로 원복 (필수!)
+SET GTID_NEXT = 'AUTOMATIC';
+
+-- 5. 슬레이브 복제 다시 시작
+START SLAVE; 
