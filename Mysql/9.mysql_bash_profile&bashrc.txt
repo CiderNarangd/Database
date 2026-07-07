@@ -9,7 +9,7 @@ export TEMP=/tmp
 export TMPDIR=/tmp
 
 export MYSQL_HOME=/usr/local/mysql
-export MYSQL_HOME=$MYSQL_BASE
+
 export DATADIR=/u01/mysql/${HOST_NAME}/DATA
 export BINDIR=/u01/mysql/${HOST_NAME}/BINLOG
 export REDODIR=/u01/mysql/${HOST_NAME}/IBLOG
@@ -17,8 +17,7 @@ export ADMINDIR=/u01/mysql/${HOST_NAME}/ADMIN
 
 #export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
 
-export PATH=$XTRABACKUP_HOME/bin:$MYSQL_HOME/bin:
-
+export PATH=$XTRABACKUP_HOME/bin:$MYSQL_HOME/bin:$PATH
 
 ===============================================================
 

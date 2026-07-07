@@ -1,0 +1,30 @@
+Mysql innodb cluster
+
+Mysql에서 제공하는 공식 HA 솔루션
+
+ - Group Replicatino 기반 (3대 이상)
+ - Mysql Router - 로드밸런싱 역할 및 커넥션 생성하기전 게이트웨이 역할
+				- App Server는 Router만 바라본다.
+				
+ - Mysql Shell - 클러스터 관리하기 위한 cli 도구 / JavaScript or Python 사용 가능
+
+ - 자동화 장애조치 가능 (auto-failover)
+   -> 마스터 장애시 새로운 마스터 선출하여 서비스 장애 최소화
+ - 가상 동기화 가능
+   -> 트랜잭션이 그룹 내에서 과반수 노드에 기록되는것을 보장하므로 마스터가 갑작스럽게 죽어도
+	  스플릿 브레인 및 데이터 유실 문제가 발생하지 않음
+	 
+	*split-barin? -> 둘 이상의 노드가 자신을 마스터라고 판단하는 상태
+		
+ - 온라인 스케일 아웃
+	-> 서비스 중단없이 mysql shell을 통하여 노드 추가 가능
+ - Innodb 만 사용가능 
+    -> 이름부터 innodb cluster이므로 다른 데이베이스 엔진은 사용 불가능하다.
+	
+ - 싱글 프라이머리(Single Primary)
+	-> 1대의 서버만 read/wrtie 가능 , 나머지 서버들은 읽기전용 -> 안전성이 높아서 일반적으로 많이 사용가능
+ - 멀티 프라이머리(Multi Primary)
+    -> 클러스턴 내에서 다수의 서버가 read/write 가능 /
+	-> 동시 수정시 데이터 충돌 컨트롤이 필요하므로 특수한 목적이 아니면 잘 쓰지않음.
+	
+	

@@ -1,0 +1,208 @@
+Innodb Cluster 
+
+DB Version - mysql8.4.8
+OS Version - Rocky 9.8
+
+- 3-Node 구성
+mysql-ibc-router	192.168.56.210	Router&Shell
+mysql-ibc-primary	192.168.56.211	Primary / Read&Write
+mysql-ibc-sec01		192.168.56.212	Secondary-01 / Read
+mysql-ibc-sec02		192.168.56.213	Secondary-02 / Read
+
+
+// Hosts Network Setting
+
+-- 모든 호스트에서
+
+$ vi /etc/hosts 
+Append
+==================================
+
+192.168.56.210	mysql-ibc-router	
+192.168.56.211	mysql-ibc-primary	
+192.168.56.212	mysql-ibc-sec01		
+192.168.56.213	mysql-ibc-sec02		
+	
+======================================
+
+
+
+// DB Install & Setting
+
+--  모든 노드의 동일하게 설치 (1~4)
+	따로 설정은 건들지 않는다. (Mysql_Autoinstall_84.sh)
+
+
+###### Router Install ######
+
+-- In mysql-84-router Hosts
+
+$ tar -xvf mysql-router-8.4.8-linux-glibc2.28-x86_64.tar.xz
+$ mv mysql-router-8.4.8-linux-glibc2.28-x86_64 /usr/local
+$ cd /usr/local
+$ chown -R mysql:mysql mysql-router-8.4.8-linux-glibc2.28-x86_64
+$ ln -s mysql-router-8.4.8-linux-glibc2.28-x86_64 mysql-router
+
+$ vi .bash_profile
+
+==========================================
+
+export ROUTER_HOME=/usr/local/mysql-router
+export PATH=$ROUTER_HOME/bin:$PATH
+
+===========================================
+
+
+######  Shell Install ########
+
+-- Install all hosts
+
+$ tar -xvf mysql-shell-8.4.8-linux-glibc2.28-x86-64bit.tar.gz
+$ mv mysql-shell-8.4.8-linux-glibc2.28-x86-64bit /usr/local
+$ cd /usr/local
+$ chown -R mysql:mysql mysql-shell-8.4.8-linux-glibc2.28-x86-64bit
+$ ln -s mysql-shell-8.4.8-linux-glibc2.28-x86-64bit mysql-shell
+
+$ vi .bash_profile
+
+==========================================
+
+export SHELL_HOME=/usr/local/mysql-shell
+export PATH=$SHELL_HOME/bin:$PATH
+
+===========================================
+
+// Install check
+
+$ mysqlsh --version
+mysqlsh   Ver 8.4.8 for Linux on x86_64 - for MySQL 8.4.8 (MySQL Community Server (GPL))
+
+$ mysqlrouter --version
+MySQL Router  Ver 8.4.8 for Linux on x86_64 (MySQL Community - GPL)
+
+// bash_profile & bashrc Set
+
+$ vi .bash_profile
+Append
+===========================================================================================
+
+export MYSQL_HOME=/usr/local/mysql
+export XTRABACKUP_HOME=/usr/local/xtrabackup
+export ROUTER_HOME=/usr/local/mysql-router
+export SHELL_HOME=/usr/local/mysql-shell
+
+export HOST_NAME=$(hostname -s)
+
+export TEMP=/tmp
+export TMPDIR=/tmp
+
+export MYSQL_HOME=/usr/local/mysql
+export DATADIR=/u01/mysql/${HOST_NAME}/DATA
+export BINDIR=/u01/mysql/${HOST_NAME}/BINLOG
+export REDODIR=/u01/mysql/${HOST_NAME}/IBLOG
+export ADMINDIR=/u01/mysql/${HOST_NAME}/ADMIN
+
+#export LD_LIBRARY_PATH=$MYSQL_HOME/lib:$MYSQL_HOME/lib/private:$LD_LIBRARY_PATH
+
+export PATH=$XTRABACKUP_HOME/bin:$MYSQL_HOME/bin:$ROUTER_HOME/bin:$SHELL_HOME/bin:$PATH
+
+======================================================================================
+
+
+##### Cluster 구성 #####
+
+// 계정 생성
+
+-- On Primary,Secondary01,02
+
+* 편의상 전체 권한 & 대역대 설정
+* 문서 하단 실무용 권한 설정 확인
+
+mysql> CREATE USER 'cluster_admin'@'%' IDENTIFIED BY 'oracle';
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'cluster_admin'@'%' WITH GRANT OPTION;
+mysql> flush privileges;
+
+
+// 접속 확인
+
+$ mysqlsh cluster_admin@mysql-ibc-primary:3306 --js
+$ mysqlsh cluster_admin@mysql-ibc-sec01:3306 --js
+$ mysqlsh cluster_admin@mysql-ibc-sec02:3306 --js
+
+$ mysqlsh cluster_admin@localhost:3306 --js
+
+* 패스워드 저장 y
+
+-- Pre-Checking Instance 
+-- 각 호스트에서 진행
+
+js> dba.checkInstanceConfiguration('cluster_admin@mysql-ibc-primary:3306');
+js> dba.checkInstanceConfiguration('cluster_admin@mysql-ibc-sec01:3306');
+js> dba.checkInstanceConfiguration('cluster_admin@mysql-ibc-sec02:3306');
+
+* 아래 configureInstance() 함수 사용하면서 해결됨.
+
+-- 각 노드 호스트에서
+$ mysqlsh cluster_admin@127.0.0.1:3306 --js
+js > dba.configureInstance();
+
+
+-- 모든 노드의 uuid값 확인
+sql> show global variables like '%server_uuid%';
++---------+---------------+-----------------------------------------+
+|primary - | server_uuid   | d472d103-79cf-11f1-a1ce-080027dbb89f   |
+|sec01   - | server_uuid   | dd3a3c02-79cf-11f1-96e4-080027dbb89f   |
+|sec02|	-  | server_uuid   | df5d5422-79cf-11f1-9bcd-080027dbb89f   |
++---------+---------------+-----------------------------------------+
+
+** innodb cluster에선 uuid 기반으로 작동한다. 하지만 binlog 기반 작업 및 다른 리플리케이션 연결에 대비하여
+   server-id값도 고유하게 변경해주도록 한다
+   
+   primary 	- 1
+   sec01	- 2
+   sec02	- 3 
+   
+
+// cluster 생성 및 노드 추가
+
+-- Primary Node로 접속
+$ mysqlsh cluster_admin@mysql-ibc-primary:3306 --js
+
+
+-- 여기서부터
+js> var cluster = dba.createCluster('kinamCluster');
+
+
+
+
+mysqlsh -- dba configure-instance cluster_admin@mysql-ibc-primary:3306
+
+mysqlsh root@127.0.0.1:3306 --sql
+mysqlsh root@127.0.0.1:3306 --js
+
+------------------------------------
+
+\js
+\sql
+
+
+GRANT 
+  CONNECTION_ADMIN,
+  GROUP_REPLICATION_ADMIN,
+  PERSIST_RO_VARIABLES_ADMIN,
+  SYSTEM_VARIABLES_ADMIN,
+  BACKUP_ADMIN,
+  CLONE_ADMIN,
+  PROCESS, 
+  RELOAD, 
+  REPLICATION SLAVE, 
+  REPLICATION_APPLIER,
+  REPLICATION CLIENT
+ON *.* TO 'cluster_admin'@'%';
+
+
+GRANT SELECT ON mysql.* TO 'cluster_admin'@'%';
+GRANT SELECT ON performance_schema.* TO 'cluster_admin'@'%';
+GRANT SELECT ON sys.* TO 'cluster_admin'@'%';
+
+FLUSH PRIVILEGES;
