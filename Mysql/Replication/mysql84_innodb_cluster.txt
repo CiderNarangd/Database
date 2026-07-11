@@ -172,20 +172,358 @@ $ mysqlsh cluster_admin@mysql-ibc-primary:3306 --js
 -- 여기서부터
 js> var cluster = dba.createCluster('kinamCluster');
 
+A new InnoDB Cluster will be created on instance 'mysql-ibc-primary:3306'.
+
+Validating instance configuration at mysql-ibc-primary:3306...
+
+This instance reports its own address as mysql-ibc-primary:3306
+
+Instance configuration is suitable.
+NOTE: Group Replication will communicate with other members using 'mysql-ibc-primary:3306'. Use the localAddress option to override.
+
+* Checking connectivity and SSL configuration...
+
+Creating InnoDB Cluster 'kinamCluster' on 'mysql-ibc-primary:3306'...
+
+Adding Seed Instance...
+Cluster successfully created. Use Cluster.addInstance() to add MySQL instances.
+At least 3 instances are needed for the cluster to be able to withstand up to
+one server failure.
+
+
+cluster.addInstance('cluster_admin@mysql-ibc-sec01:3306', {
+  recoveryMethod: 'clone'
+});
+
+js> cluster.addInstance('cluster_admin@mysql-ibc-sec01:3306')
+js> cluster.addInstance('cluster_admin@mysql-ibc-sec02:3306')
+
+Clone 선택
+
+** 실패시
+js> cluster.rejoinInstance('cluster_admin@mysql-ibc-sec01:3306')
+js> cluster.rejoinInstance('cluster_admin@mysql-ibc-sec02:3306')
+
+
+js> cluster.status();
+
+{
+    "clusterName": "kinamCluster", 
+    "defaultReplicaSet": {
+        "name": "default", 
+        "primary": "mysql-ibc-primary:3306", 
+        "ssl": "REQUIRED", 
+        "status": "OK", 
+        "statusText": "Cluster is ONLINE and can tolerate up to ONE failure.", 
+        "topology": {
+            "mysql-ibc-primary:3306": {
+                "address": "mysql-ibc-primary:3306", 
+                "memberRole": "PRIMARY", 
+                "mode": "R/W", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec01:3306": {
+                "address": "mysql-ibc-sec01:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec02:3306": {
+                "address": "mysql-ibc-sec02:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }
+        }, 
+        "topologyMode": "Single-Primary"
+    }, 
+    "groupInformationSourceMember": "mysql-ibc-primary:3306"
+}
+
+
+//Router 구성
+
+$ mkdir -p /u01/mysql-router
+$ chown -R mysql:mysql /u01/mysql-router
+$ chmod -R 775 /u01/mysql-router
+
+-- Booststarp
+$ mysqlrouter --bootstrap cluster_admin@mysql-ibc-primary:3306 \
+  --directory /u01/mysql-router \
+  --name mysql-ibc-router \
+  --conf-base-port 6446
+
+Please enter MySQL password for cluster_admin: 
+# Bootstrapping MySQL Router 8.4.8 (MySQL Community - GPL) instance at '/u01/mysql-router'...
+
+- Creating account(s) (only those that are needed, if any)
+- Verifying account (using it to run SQL queries that would be run by Router)
+- Storing account in keyring
+- Adjusting permissions of generated files
+- Creating configuration /u01/mysql-router/mysqlrouter.conf
+
+# MySQL Router 'mysql-ibc-router' configured for the InnoDB Cluster 'kinamCluster'
+
+After this MySQL Router has been started with the generated configuration
+
+    $ mysqlrouter -c /u01/mysql-router/mysqlrouter.conf
+
+InnoDB Cluster 'kinamCluster' can be reached by connecting to:
+
+## MySQL Classic protocol
+
+- Read/Write Connections: localhost:6446
+- Read/Only Connections:  localhost:6447
+- Read/Write Split Connections: localhost:6450
+
+## MySQL X protocol
+
+- Read/Write Connections: localhost:6448
+- Read/Only Connections:  localhost:6449
+
+$ cd /u01/mysql-router
+$ ./start.sh
+
+
+// Router 접속 테스트
+
+-- Primary
+$ mysql -u cluster_admin -p -h mysql-ibc-router -P 6446
+
+mysql> SELECT @@hostname, @@port, @@read_only;
++-------------------+--------+-------------+
+| @@hostname        | @@port | @@read_only |
++-------------------+--------+-------------+
+| mysql-ibc-primary |   3306 |           0 |
++-------------------+--------+-------------+
+
+--Secondary
+$ mysql -u cluster_admin -p -h mysql-ibc-router -P 6447
+
+mysql> SELECT @@hostname, @@port, @@read_only;
++-----------------+--------+-------------+
+| @@hostname      | @@port | @@read_only |
++-----------------+--------+-------------+
+| mysql-ibc-sec02 |   3306 |           1 |
++-----------------+--------+-------------+
+1 row in set (0.00 sec)
 
 
 
-mysqlsh -- dba configure-instance cluster_admin@mysql-ibc-primary:3306
+// 장애조치 테스트 (Auto Failover)
 
-mysqlsh root@127.0.0.1:3306 --sql
-mysqlsh root@127.0.0.1:3306 --js
+$ mysqlsh cluster_admin@mysql-ibc-primary:3306 --js
 
-------------------------------------
+js> var cluster=dba.getCluster('kinamCluster');
+
+// 현재 primary host 확인 (mysql-ibc-primary)
+js > cluster.status();
+{
+    "clusterName": "kinamCluster", 
+    "defaultReplicaSet": {
+        "name": "default", 
+        "primary": "mysql-ibc-primary:3306", 
+        "ssl": "REQUIRED", 
+        "status": "OK", 
+        "statusText": "Cluster is ONLINE and can tolerate up to ONE failure.", 
+        "topology": {
+            "mysql-ibc-primary:3306": {
+                "address": "mysql-ibc-primary:3306", 
+                "memberRole": "PRIMARY", 
+                "mode": "R/W", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec01:3306": {
+                "address": "mysql-ibc-sec01:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec02:3306": {
+                "address": "mysql-ibc-sec02:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }
+        }, 
+        "topologyMode": "Single-Primary"
+    }, 
+    "groupInformationSourceMember": "mysql-ibc-primary:3306"
+}
+
+-- in mysql-ibc-primary
+$ systemctl stop mysqld
+
+-- primary 접속 시도 및 호스트명 확인
+$ mysql -u cluster_admin -p -h mysql-ibc-router -P 6446 
+mysql> SELECT @@hostname, @@read_only;
++-----------------+-------------+
+| @@hostname      | @@read_only |
++-----------------+-------------+
+| mysql-ibc-sec01 |           0 |
++-----------------+-------------+
+
+-- mysql shell에서 변경된 primary 노드 확인ㄹ
+
+JS > cluster.status();
+{
+    "clusterName": "kinamCluster", 
+    "defaultReplicaSet": {
+        "name": "default", 
+        "primary": "mysql-ibc-sec01:3306", 
+        "ssl": "REQUIRED", 
+        "status": "OK_NO_TOLERANCE_PARTIAL", 
+        "statusText": "Cluster is NOT tolerant to any failures. 1 member is not active.", 
+        "topology": {
+            "mysql-ibc-primary:3306": {
+                "address": "mysql-ibc-primary:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "n/a", 
+                "readReplicas": {}, 
+                "role": "HA", 
+                "shellConnectError": "MySQL Error 2003: Could not open connection to 'mysql-ibc-primary:3306': Can't connect to MySQL server on 'mysql-ibc-primary:3306' (111)", 
+                "status": "(MISSING)"
+            }, 
+            "mysql-ibc-sec01:3306": {
+                "address": "mysql-ibc-sec01:3306", 
+                "memberRole": "PRIMARY", 
+                "mode": "R/W", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec02:3306": {
+                "address": "mysql-ibc-sec02:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }
+        }, 
+        "topologyMode": "Single-Primary"
+    }, 
+    "groupInformationSourceMember": "mysql-ibc-sec01:3306"
+}
+-- in mysql-ibc-primary node
+mysql > START GROUP_REPLICATION;
+or 
+js > cluster.rejoinInstance('cluster_admin@mysql-ibc-primary:3306');
+
+JS > cluster.status();
+{
+    "clusterName": "kinamCluster", 
+    "defaultReplicaSet": {
+        "name": "default", 
+        "primary": "mysql-ibc-sec01:3306", 
+        "ssl": "REQUIRED", 
+        "status": "OK", 
+        "statusText": "Cluster is ONLINE and can tolerate up to ONE failure.", 
+        "topology": {
+            "mysql-ibc-primary:3306": {
+                "address": "mysql-ibc-primary:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec01:3306": {
+                "address": "mysql-ibc-sec01:3306", 
+                "memberRole": "PRIMARY", 
+                "mode": "R/W", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }, 
+            "mysql-ibc-sec02:3306": {
+                "address": "mysql-ibc-sec02:3306", 
+                "memberRole": "SECONDARY", 
+                "mode": "R/O", 
+                "readReplicas": {}, 
+                "replicationLag": "applier_queue_applied", 
+                "role": "HA", 
+                "status": "ONLINE", 
+                "version": "8.4.8"
+            }
+        }, 
+        "topologyMode": "Single-Primary"
+    }, 
+    "groupInformationSourceMember": "mysql-ibc-sec01:3306"
+}
+
+// 중지 절차
+-- router 종료
+$ /u01/mysql-router/stop.sh
+
+-- Secondary들 종료
+$ systemctl stop mysqld
+
+-- Primary 종료
+$ systemctl stop mysqld
+
+
+// 재시작 절차
+
+-- Primary 시작
+$ systemctl start mysqld
+
+-- Secondary들 시작
+$ systemctl start mysqld
+
+-- router 시작
+$ /u01/mysql-router/start.sh
+
+
+################################################################################################
+
+// Router Port Description (Default Set)
+- Innodb에선 라우터를 사용하여 로드밸런싱 사용가능
+- 6446 - Primary / Read&Write		// 일반적으로 이곳으로 커넥션 붙어서 작업
+- 6447 - Secondarys / Read only		// 읽기전용으로 read 전용 커넥션 부하 분산 가능 ( 배치,통계 처리등 )
+- 6448 - Mysql Shell Document Store (X Protocol Read&Write)
+- 6449 - Document store read (X Protocol Read Only) 
+
+- 6446,6447 포트만 알면 크게 문제 없을듯 하다.
+
+
 
 \js
 \sql
 
-
+// 실무용 클러스터 계정 권한 설정
 GRANT 
   CONNECTION_ADMIN,
   GROUP_REPLICATION_ADMIN,
@@ -200,9 +538,37 @@ GRANT
   REPLICATION CLIENT
 ON *.* TO 'cluster_admin'@'%';
 
-
 GRANT SELECT ON mysql.* TO 'cluster_admin'@'%';
 GRANT SELECT ON performance_schema.* TO 'cluster_admin'@'%';
 GRANT SELECT ON sys.* TO 'cluster_admin'@'%';
 
 FLUSH PRIVILEGES;
+
+// 함수들..
+var cluster = dba.createCluster("kinamCluster");
+var cluster = dba.getCluster();
+cluster.status();
+cluster.status({extended: 1});
+cluster.describe();
+cluster.addInstance("cluster_admin@mysql-ibc-sec01:3306");
+cluster.removeInstance("mysql-ibc-sec01:3306",{force:true});
+cluster.rejoinInstance("mysql-ibc-sec01:3306");
+cluster.rescan();
+cluster.setPrimaryInstance("mysql-ibc-sec01:3306");
+cluster.options();
+cluster.setOption("exitStateAction","READ_ONLY");
+cluster.disconnect();
+
+// mysql command
+SHOW VARIABLES LIKE 'group_replication%';
+SHOW VARIABLES LIKE 'binlog_format';
+SHOW VARIABLES LIKE 'log_bin';
+SHOW VARIABLES LIKE 'gtid_mode';
+SELECT * FROM performance_schema.replication_group_members;
+SELECT * FROM performance_schema.replication_group_member_stats;
+
+START GROUP_REPLICATION;
+STOP GROUP_REPLICATION;
+SHOW REPLICA STATUS FOR CHANNEL 'group_replication_recovery'\G
+
+
