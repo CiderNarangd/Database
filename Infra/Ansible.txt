@@ -1,0 +1,266 @@
+Ansible
+
+O/S - Rocky 908
+
+
+$ vi /etc/hosts
+Append
+=================================
+
+# Oracle
+192.168.56.101	orcl-19c-si
+192.168.56.102  orcl-19c-dg-primary
+192.168.56.103  orcl-19c-dg-standby
+192.168.56.11   orcl-19c-rac01
+192.168.56.12   orcl-19c-rac02
+192.168.56.13	orcl-19c-rac03
+192.168.56.199	orcl-19c-rman
+#Mysql
+192.168.56.201	mysql-84-source
+192.168.56.202	mysql-84-replica
+192.168.56.210	mysql-ibc-router
+192.168.56.211	mysql-ibc-primary
+192.168.56.212	mysql-ibc-sec01
+192.168.56.213	mysql-ibc-sec02
+192.168.56.222	mysql-84-backup
+
+#Etc
+192.168.56.51	Manager
+192.168.56.52	Monitoring
+
+==================================
+
+// Ansibel Install
+
+** SSH 기반이기에 Agnet들 설치가 따로 필요 없음.
+
+$ dnf install -y epel-release
+$ dnf install -y ansible-core
+$ ansible --version
+
+ansible [core 2.14.18]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/kinam/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.9/site-packages/ansible
+  ansible collection location = /home/kinam/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible
+  python version = 3.9.25 (main, Apr 17 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-14)] (/usr/bin/python3)
+  jinja version = 3.1.2
+  libyaml = True
+  
+$ ssh-keygen
+Generating public/private ed25519 key pair.
+Enter file in which to save the key (/home/kinam/.ssh/id_ed25519): 
+Created directory '/home/kinam/.ssh'.
+Enter passphrase for "/home/kinam/.ssh/id_ed25519" (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/kinam/.ssh/id_ed25519
+Your public key has been saved in /home/kinam/.ssh/id_ed25519.pub
+The key fingerprint is:
+SHA256:iQju7Q57kmZFf3wu5BghOsaOybthOhNadJAEWCoLrnk kinam@manager
+The key's randomart image is:
++--[ED25519 256]--+
+|o+o.             |
+|..o              |
+|+ ..             |
+|+o..+... .       |
+|.+.+.o.oS        |
+|oo*.. o + .      |
+|=XE+.  * o       |
+|OoB+. . o .      |
+|.B++o    .       |
++----[SHA256]-----+
+
+
+$ vi Entier_SSH_Register.sh
+
+=========================================
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+ORACLE_USER="ansible"
+MYSQL_USER="kinam"
+PUBKEY=/home/kinam/.sshid_ed25519.pub
+
+oracle_hosts=(
+  orcl-19c-si
+  orcl-19c-dg-primary
+  orcl-19c-dg-standby
+  orcl-19c-rac01
+  orcl-19c-rac02
+  orcl-19c-rac03
+  orcl-19c-rman
+)
+
+mysql_hosts=(
+  mysql-84-replica
+  mysql-84-source
+  mysql-ibc-router
+  mysql-ibc-primary
+  mysql-ibc-sec01
+  mysql-ibc-sec02
+  mysql-84-backup
+  Monitoring
+)
+
+for host in "${oracle_hosts[@]}"; do
+  ssh-copy-id -i "$PUBKEY" "${ORACLE_USER}@${host}"
+done
+
+for host in "${mysql_hosts[@]}"; do
+  ssh-copy-id -i "$PUBKEY" "${MYSQL_USER}@${host}"
+done
+
+=====================================================
+
+$ chmod +x Entier_SSH_Register.sh
+$ ./Entier_SSH_Register
+
+
+// Inventory 작성
+
+# inventory.yml
+=====================================================================
+all:
+  children:
+
+    oracle:
+      children:
+        oracle_si:
+          hosts:
+            orcl-19c-si:
+              ansible_host: 192.168.56.101
+
+        oracle_dg:
+          hosts:
+            orcl-19c-dg-primary:
+              ansible_host: 192.168.56.102
+              dg_role: primary
+            orcl-19c-dg-standby:
+              ansible_host: 192.168.56.103
+              dg_role: standby
+
+        oracle_rac:
+          hosts:
+            orcl-19c-rac01:
+              ansible_host: 192.168.56.11
+            orcl-19c-rac02:
+              ansible_host: 192.168.56.12
+            orcl-19c-rac03:
+              ansible_host: 192.168.56.13
+
+        oracle_rman:
+          hosts:
+            orcl-19c-rman:
+              ansible_host: 192.168.56.199
+      vars:
+        ansible_user: oracle
+        ansible_python_interpreter: /usr/bin/python3
+
+    mysql:
+      children:
+        mysql_replication:
+          hosts:
+            mysql-84-source:
+              ansible_host: 192.168.56.201
+              mysql_role: source
+            mysql-84-replica:
+              ansible_host: 192.168.56.202
+              mysql_role: replica
+
+        mysql_ibc:
+          hosts:
+            mysql-ibc-router:
+              ansible_host: 192.168.56.210
+              ibc_role: router
+            mysql-ibc-primary:
+              ansible_host: 192.168.56.211
+              ibc_role: primary
+            mysql-ibc-sec01:
+              ansible_host: 192.168.56.212
+              ibc_role: secondary
+            mysql-ibc-sec02:
+              ansible_host: 192.168.56.213
+              ibc_role: secondary
+
+        mysql_backup:
+          hosts:
+            mysql-84-backup:
+              ansible_host: 192.168.56.222
+      vars:
+        ansible_user: kinam
+        ansible_python_interpreter: /usr/bin/python3
+        mysql_port: 3306
+
+    etc:
+      hosts:
+        Manager:
+          ansible_host: 192.168.56.51
+        Monitoring:
+          ansible_host: 192.168.56.52
+      vars:
+        ansible_user: kinam
+		
+=====================================================================
+		
+** Inventory를 나눠서 관리하는게 편할것 같기도하
+
+
+-- 전체 그룹 구조 확인
+$ ansible-inventory -i inventory.yaml --graph
+
+--  특정 그룹만 확인
+$ ansible-inventory -i inventory.yaml --graph oracle_rac
+
+# 연결 테스트
+$ ansible mysql_replication -i inventory.yaml -m ping
+
+
+
+// 파일 배포 Playbook 작성
+
+$ vi deploy_file.yaml
+
+=======================================================
+
+- name: Deploy file to mysql servers
+  hosts: mysql_replication
+  vars:
+    src_file: "/home/kinam/ansible_test.txt"
+    dest_path: "/storage/downloads/ansible_tests.txt"
+    backup_before_copy: false
+
+  tasks:
+    - name: 파일 배포
+      ansible.builtin.copy:
+        src: "{{ src_file }}"
+        dest: "{{ dest_path }}"
+        owner: kinam
+        group: kinam
+        mode: '0755'
+        backup: yes          
+      register: copy_result
+
+	- name: 배포 결과 확인
+      ansible.builtin.debug:
+        msg: "파일 변경됨: {{ copy_result.changed }}"
+	  
+========================================================
+
+-- Synatx Check
+$ ansible-playbook -i inventory.yaml deploy_file.yaml --syntax-check
+
+-- 실제 적용 전 dry-run
+$ ansible-playbook -i inventory.yaml deploy_file.yaml --check --diff
+
+-- 실제 실행
+$ ansible-playbook -i inventory.yaml deploy_file.yaml
+
+-- 특정 호스트들만 대상
+$ ansible-playbook -i inventory.yaml deploy_file.yaml --limit mysql_replication
+
+-- Ad-hoc Example
+$ ansible mysql_replication -i inventory.yaml -m shell -a "df -h /u01" 
+$ ansible mysql_replication -i inventory.yaml -m copy \
+  -a "src=/home/kinam/ansible_test.txt dest=/storage/downloads/ansible_testss.txt owner=kinam group=mysql mode=0755" 
