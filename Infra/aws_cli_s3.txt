@@ -1,0 +1,76 @@
+AWS S3
+ - 장기보관 데이터 S3 저장
+ 
+ OS Version 	 - Rocky 9.8
+ AWS CLI Version - 
+
+// Install
+$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+$ unzip awscliv2.zip
+$ sudo ./aws/install 
+$ aws --version
+aws-cli/2.35.21 Python/3.14.6 Linux/5.14.0-687.10.1.el9_8.0.1.x86_64 exe/x86_64.rocky.9
+
+$ which aws
+/usr/local/bin/aws
+
+$ aws configure
+
+AWS Access Key ID [None]: my access key
+AWS Secret Access Key [None]: my secret access key
+Default region name [None]: ap-northeast-2
+Default output format [None]: json
+
+ - S3 Bucket Name 	- kinam-s3-mysqlbackup
+ - S3 Region 		- ap-northeast-2 (아시아 태평양(서울))
+ 
+
+
+// File Upload
+$ touch s3_test.txt
+$ aws s3 cp s3_test.txt \
+  s3://kinam-s3-mysqlbackup/mysql-backup/s3-test.txt
+
+$ aws s3 ls  s3://kinam-s3-mysqlbackup/mysql-backup/
+2026-07-13 20:42:20          0 
+2026-07-13 20:43:14          8 s3-test.txt
+
+// File Download
+$ aws s3 cp s3://kinam-s3-mysqlbackup/mysql-backup/s3-test.txt /storage/downloads/s3_file.txt
+download: s3://kinam-s3-mysqlbackup/mysql-backup/s3-test.txt to ./s3_file.txt
+
+$ ll /storage/downloads/ | grep s3_file.txt
+-rw-r--r--  1 kinam kinam          8 Jul 13 20:43 s3_file.txt
+
+
+// s3 Upload Shell Script
+
+$ vi $mysql_full_to_s3.sh
+$ crontab -e 
+	PATH=/usr/local/bin:/usr/bin:/bin
+	0 2 * * * /storage/scripts/mysql_full_to_s3.sh  >> /storage/scripts/mysql-backup.log 2>&1
+$ chmod +x /storage/scripts/mysql_full_to_s3.sh
+========================================================
+
+#!/usr/bin/env bash
+
+BUCKET_NAME=s3://kinam-s3-mysqlbackup/mysql-backup
+HOST="$(hostname -s)"
+DATE=$(date +%Y%m%d)
+BACKUP_DIR=/u01/mysql/${HOST}/BACKUP/${DATE}_full
+BUCKET_DIR=${BUCKET_NAME}/${DATE}
+
+if [ ! -d ${BACKUP_DIR} ] ; then
+	echo "No Backup Exists : ${BACKUP_DIR}"
+	exit 0
+fi
+
+echo "${DATE} backup file upload start to s3"
+if aws s3 sync "${BACKUP_DIR}" "${BUCKET_DIR}"; then
+    echo "${DATE} backup upload success"
+else
+    echo "${DATE} backup upload FAILED" >&2
+    exit 1
+fi
+
+========================================================
