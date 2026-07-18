@@ -38,7 +38,7 @@ CUSTOM_ARGS=""
 $ mkdir -p /etc/alloy
 $ touch /etc/alloy/config.alloy
 $ chown -R alloy:alloy /etc/alloy
-
+$ chmod -R 775 /etc/alloy
 
 // Working Directory 생성
 $ mkdir -p /u01/alloy/data

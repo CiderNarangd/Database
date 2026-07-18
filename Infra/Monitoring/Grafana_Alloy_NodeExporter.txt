@@ -1,0 +1,26 @@
+Grafana Alloy Node Exporter
+
+Host - mysql-84-source
+OS	- Rocky908
+
+// 기존과 동일하게 pull 방식으로 구현해서 중앙화
+	
+
+$ systemctl cat alloy | grep -i EnvironmentFile
+EnvironmentFile=/etc/default/alloy
+
+$ vi /etc/alloy/config.alloy
+==============================================================================
+
+// 호스트 시스템 메트릭 (메트릭 생성)
+prometheus.exporter.unix "node" {
+}
+
+==============================================================================
+
+$ systemctl restart alloy
+$ systemctl status alloy
+
+// WebConsole 에서 상태 확인
+http://192.168.56.201:12345
+

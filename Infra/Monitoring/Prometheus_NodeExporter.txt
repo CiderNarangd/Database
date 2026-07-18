@@ -1,0 +1,85 @@
+Prometheus NodeExporter
+
+$ cd /usr/local/prometheus
+$ mkdir -p node_exporter
+$ touch /usr/local/prometheus/node_exporter/mysql-84-source.yml
+
+$ vi /usr/local/prometheus/prometheus.yml
+=====================================================================================
+
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          app: "prometheus"
+		  
+  - job_name: 'node'
+	metrics_path: '/api/v0/component/prometheus.exporter.unix.node/metrics'
+    file_sd_configs:
+      - files:
+        - /usr/local/prometheus/node_exporter/*.yml
+        refresh_interval: 30s
+        
+================================================================================
+        
+ 
+$ vi /usr/local/prometheus/node_exporter/mysql-84-source.yml
+
+========================================================================================================
+
+- targets: ['192.168.56.201:12345']			## target ip
+  labels:
+    instance: 'mysql-84-source'
+
+- targets: ['192.168.56.202:12345']			## target ip
+  labels:
+    instance: 'mysql-84-replica'
+	
+========================================================================================================
+
+** 타겟 추가시 파일 생성하여 추가만 하면됨 / 재시작 필요 X	
+	
+$ systemctl restart prometheus
+
+
+
+$ vi /usr/local/prometheus/node_exporter/mysql-84-innodb.yml
+
+========================================================================================================
+
+- targets: ['192.168.56.210:12345']			## target ip
+  labels:
+    instance: 'mysql-ibc-router'
+
+- targets: ['192.168.56.211:12345']			## target ip
+  labels:
+    instance: 'mysql-ibc-primary'
+
+- targets: ['192.168.56.212:12345']			## target ip
+  labels:
+    instance: 'mysql-ibc-sec01'
+
+- targets: ['192.168.56.213:12345']			## target ip
+  labels:
+    instance: 'mysql-ibc-sec02'
+	
+========================================================================================================
+
+** E:\Git2\Database\Infra\Monitoring\prometheus_node_yaml\

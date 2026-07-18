@@ -45,7 +45,7 @@ alias promdata='cd /u01/prometheus/data/'
 
 // Systemctl 등록
 
-vi /etc/systemd/system/prometheus.service
+$ vi /etc/systemd/system/prometheus.service
 
 ===============================================
 
@@ -58,8 +58,8 @@ User=kinam
 Restart=on-failure
 ExecStart=/usr/local/prometheus/prometheus \
   --config.file=/usr/local/prometheus/prometheus.yml \
-  --storage.tsdb.path=/u01/prometheus/data/
-
+  --storage.tsdb.path=/u01/prometheus/data/ 
+  
 [Install]
 WantedBy=multi-user.target
 

@@ -1,0 +1,7 @@
+- targets: ['192.168.56.102:12345']			## target ip
+  labels:
+    instance: 'milano'
+
+- targets: ['192.168.56.103:12345']			## target ip
+  labels:
+    instance: 'roma'
