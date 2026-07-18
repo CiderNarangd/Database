@@ -71,3 +71,5 @@ $ systemctl status prometheus
 $ systemctl stop prometheus
 $ systemctl enable prometheus
 
+** 수집설정은 하위문서들 참조
+** /usr/local/prometheus/promtool check config /usr/local/prometheus/prometheus.yml

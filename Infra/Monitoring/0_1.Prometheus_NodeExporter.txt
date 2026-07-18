@@ -1,5 +1,8 @@
 Prometheus NodeExporter
 
+Host - Monitoring
+OS - Rocky908
+
 $ cd /usr/local/prometheus
 $ mkdir -p node_exporter
 $ touch /usr/local/prometheus/node_exporter/mysql-84-source.yml

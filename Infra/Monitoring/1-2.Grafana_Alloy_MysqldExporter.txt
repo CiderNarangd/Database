@@ -1,0 +1,54 @@
+Grafana Alloy Mysqld Exporter
+
+Host - mysql-84-source
+OS	- Rocky908
+
+// 기존 mysqld_exporter 동일하게 pull 방식으로 구현해서 중앙화
+	
+
+// Monitoring 계정 생성
+
+mysql> CREATE USER 'prometheus'@'%' IDENTIFIED BY 'oracle' WITH MAX_USER_CONNECTIONS 3;
+mysql> GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'prometheus'@'%';
+mysql> FLUSH PRIVILEGES;
+
+mysql> SHOW VARIABLES LIKE 'socket';
++---------------+------------------------------------------+
+| Variable_name | Value                                    |
++---------------+------------------------------------------+
+| socket        | /u01/mysql/mysqltemplate/DATA/mysql.sock |
++---------------+------------------------------------------+
+
+$ systemctl cat alloy | grep -i EnvironmentFile
+EnvironmentFile=/etc/default/alloy
+
+$ vi /etc/alloy/config.alloy
+==============================================================================
+
+// 호스트 시스템 메트릭 (메트릭 생성)
+prometheus.exporter.unix "node" {
+}
+
+// Mysqld Metrics
+prometheus.exporter.mysql "mysqld" {
+  data_source_name = "prometheus:oracle@unix(/u01/mysql/mysqltemplate/DATA/mysql.sock)/"
+  or
+  data_source_name = "prometheus:oracle@tcp(127.0.0.1:3306)/"
+}
+
+==============================================================================
+
+$ curl -s http://localhost:12345/api/v0/component/prometheus.exporter.mysql.mysqld/metrics | grep mysql_up
+# HELP mysql_up Whether the MySQL server is up.
+# TYPE mysql_up gauge
+mysql_up 1			<<<<< 1 확인
+
+
+-- metrics_path: '/api/v0/component/prometheus.exporter.mysql.mysqld/metrics'
+
+$ systemctl restart alloy
+$ systemctl status alloy
+
+// WebConsole 에서 상태 확인
+http://192.168.56.201:12345
+

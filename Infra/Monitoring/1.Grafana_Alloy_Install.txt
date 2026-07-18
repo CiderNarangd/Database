@@ -4,6 +4,16 @@ OS 				- Rocky 908
 Alloy Version 	- 1.17.0
 Port			- 12345
 
+** 기존 db와 system metric들을 수집할때 사용하던 
+ node_exporter / mysqld_exporter 등이 
+ grafana labs에서 alloy라는 에이전트를 개발하면서 내장시킴.
+ alloy 단일 에이전트 프로그램 하나로 여러 metric 수집 설정가능
+ 기존 exporter들은 pull 방식이 기본(push gateway로 push 사용은 가능) 
+ 이었으나 Alloy는 push/pull 방식 둘다 설정가능 
+ 해당 모니터링 구축 가이드에선 기존 exporter들과 같이 pull방식 사용 
+	-> push 방식 사용시 프로메테우스에서 타겟들 확인 불가 및 중앙관리 기능 약화
+ 
+
 // Unzip & Install
 $ unzip alloy-linux-amd64.zip
 $ mv alloy-linux-amd64 alloy
