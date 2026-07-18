@@ -1,0 +1,48 @@
+Grafana Install
+
+https://grafana.com/grafana/download
+
+$ rpm -Uvh grafana-enterprise_13.1.0_28013217238_linux_amd64.rpm
+
+$ systemctl status grafana-server.service
+$ systemctl start grafana-server.service
+$ systemctl stop grafana-server.service
+$ systemctl restart grafana-server.service
+$ systemctl enable grafana-server.service
+
+$ ifconfig
+enp0s3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 10.0.2.15  netmask 255.255.255.0  broadcast 10.0.2.255
+        inet6 fd17:625c:f037:2:a00:27ff:fedb:b89f  prefixlen 64  scopeid 0x0<global>
+        inet6 fe80::a00:27ff:fedb:b89f  prefixlen 64  scopeid 0x20<link>
+        ether 08:00:27:db:b8:9f  txqueuelen 1000  (Ethernet)
+        RX packets 1002  bytes 129267 (126.2 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 866  bytes 136817 (133.6 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+enp0s8: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.56.52  netmask 255.255.255.0  broadcast 192.168.56.255
+        inet6 fe80::a00:27ff:fe47:334  prefixlen 64  scopeid 0x20<link>
+        ether 08:00:27:47:03:34  txqueuelen 1000  (Ethernet)
+        RX packets 371539  bytes 554839088 (529.1 MiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 16091  bytes 2465765 (2.3 MiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 554  bytes 143744 (140.3 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 554  bytes 143744 (140.3 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+		
+// Local PC 브라우저에서 접속 확인		
+192.168.56.52:3000
+
+-first password
+admin/admin
+->
+admin/oracle

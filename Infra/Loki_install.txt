@@ -1,0 +1,115 @@
+Loki Install
+
+OS 				- Rocky 908
+Loki Version 	- 3.7.2
+Port 			- 3100
+
+$ unzip loki-linux-amd64.zip 
+$ ./loki-linux-amd64 --version
+loki, version 3.7.2 (branch: release-3.7.x, revision: 7486c4a7)
+  build user:       root@623d39919632
+  build date:       2026-05-13T08:54:45Z
+  go version:       go1.26.2
+  platform:         linux/amd64
+  tags:             netgo
+  
+$ mv loki-linux-amd64 loki
+$ mv loki /usr/local/bin
+
+// 로키 데이터 디렉토리 생성
+$ mkdir -p /u01/loki/data
+$ mkdir -p /u01/loki/data/chunks
+$ mkdir -p /u01/loki/data/rules
+$ mkdir -p /u01/loki/data/compactor
+
+// Loki Config Downlaod
+$ wget https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-config.yaml
+
+$ vi loki-local-config.yaml
+$ mv loki-local-config.yaml /etc/loki_config.yaml
+===========================================================================
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+  grpc_server_max_concurrent_streams: 1000
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /u01/loki/data
+  storage:
+    filesystem:
+      chunks_directory: /u01/loki/data/chunks
+      rules_directory: /u01/loki/data/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+compactor:
+  working_directory: /u01/loki/data/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+limits_config:
+  metric_aggregation_enabled: true
+  enable_multi_variant_queries: true
+  retention_period: 720h
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+pattern_ingester:
+  enabled: true
+  metric_aggregation:
+    loki_address: localhost:3100
+
+ruler:
+  alertmanager_url: http://localhost:9093
+
+frontend:
+  encoding: protobuf
+
+===========================================================================
+
+
+// systemctl 등록
+$ vi /etc/systemd/system/loki.service
+===========================================================================
+
+[Unit]
+Description=Loki
+After=network-online.target
+
+[Service]
+User=root
+Restart=on-failure
+ExecStart=/usr/local/bin/loki -config.file /etc/loki_config.yaml
+
+[Install]
+WantedBy=multi-user.target
+
+===========================================================================
+
+$ systemctl daemon-reload
+$ systemctl start loki
+$ systemctl status loki
+$ systemctl stop loki
+$ systemctl enable loki

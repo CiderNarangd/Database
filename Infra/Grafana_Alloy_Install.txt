@@ -1,0 +1,89 @@
+Grafana Alloy 
+
+OS 				- Rocky 908
+Alloy Version 	- 1.17.0
+Port			- 12345
+
+// Unzip & Install
+$ unzip alloy-linux-amd64.zip
+$ mv alloy-linux-amd64 alloy
+$ chmod +x alloy
+$ mv alloy /usr/local/bin
+
+$ alloy --version
+alloy, version v1.17.0 (branch: HEAD, revision: b5632ed)
+  build user:       root@caa10d020e9b
+  build date:       2026-06-12T11:00:24Z
+  go version:       go1.26.4
+  platform:         linux/amd64
+  tags:             gore2regex,netgo,embedalloyui,promtail_journal_enabled
+  
+// alloy 계정&그룹 생성
+$ sudo useradd --no-create-home --shell /bin/false alloy
+** $ sudo usermod -aG alloy kinam
+
+ 
+// environment file 생성
+$ touch /etc/default/alloy
+$ vi /etc/default/alloy
+$ chown -R alloy:alloy /etc/default/alloy
+===============================================
+
+CONFIG_FILE="/etc/alloy/config.alloy"
+CUSTOM_ARGS=""
+
+================================================
+
+//Configfile 생성
+$ mkdir -p /etc/alloy
+$ touch /etc/alloy/config.alloy
+$ chown -R alloy:alloy /etc/alloy
+
+
+// Working Directory 생성
+$ mkdir -p /u01/alloy/data
+$ chown -R alloy:alloy /u01/alloy
+
+
+// Systemctl 등록
+
+vi /etc/systemd/system/alloy.service
+===============================================
+
+[Unit]
+Description=Vendor-neutral programmable observability pipelines.
+Documentation=https://grafana.com/docs/alloy/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=alloy
+Group=alloy
+Restart=on-failure
+RestartSec=5s
+Environment=HOSTNAME=%H
+EnvironmentFile=/etc/default/alloy
+WorkingDirectory=/u01/alloy/data
+ExecStart=/usr/local/bin/alloy run \
+  --storage.path=/u01/alloy/data \
+  --server.http.listen-addr=0.0.0.0:12345 \
+  $CUSTOM_ARGS \
+  $CONFIG_FILE
+ExecReload=/usr/bin/env kill -HUP $MAINPID
+TimeoutStopSec=20s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+==================================================================
+  
+$ systemctl daemon-reload
+$ systemctl start alloy
+$ systemctl status alloy
+$ systemctl stop alloy
+$ systemctl enable alloy
+
+  
+  

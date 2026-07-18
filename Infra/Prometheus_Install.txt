@@ -1,0 +1,73 @@
+Prometheus Install
+
+OS 					- Rocky 908
+Prometheus Version 	- 3.13.1
+Port				- 9090
+
+
+$ tar -xvf prometheus-3.13.1.linux-amd64.tar.gz
+$ ./prometheus-3.13.1.linux-amd64/prometheus --version
+prometheus, version 3.13.1 (branch: HEAD, revision: 73ff57ce2b8161059ac7fe5188f03f1c3d22b29a)
+  build user:       root@6a98665b49f7
+  build date:       20260710-08:18:27
+  go version:       go1.26.5
+  platform:         linux/amd64
+  tags:             netgo,builtinassets
+  
+ 
+$ mv prometheus-3.13.1.linux-amd64 prometheus
+$ mv prometheus /usr/local
+
+//Prometheus 데이터 디렉토리 생성
+
+$ mkdir -p /u01/prometheus/data
+
+
+//환경변수 추가
+-- bash profile 추가
+$ vi .bash_profile
+==================================================
+
+export PROMETHEUS_HOME=/usr/local/prometheus
+export PATH=$PROMETHEUS_HOME
+
+==================================================
+
+-- bashrc alias 추가
+$ vi .bashrc
+=============================================
+
+alias prom='cd ${PROMETHEUS_HOME}'
+alias promdata='cd /u01/prometheus/data/'
+
+=============================================
+
+
+// Systemctl 등록
+
+vi /etc/systemd/system/prometheus.service
+
+===============================================
+
+[Unit]
+Description=Prometheus Server
+After=network-online.target
+
+[Service]
+User=kinam
+Restart=on-failure
+ExecStart=/usr/local/prometheus/prometheus \
+  --config.file=/usr/local/prometheus/prometheus.yml \
+  --storage.tsdb.path=/u01/prometheus/data/
+
+[Install]
+WantedBy=multi-user.target
+
+==================================================================
+
+$ systemctl daemon-reload
+$ systemctl start prometheus
+$ systemctl status prometheus
+$ systemctl stop prometheus
+$ systemctl enable prometheus
+
