@@ -1,0 +1,112 @@
+Prometheus OracleExporter
+
+Host - Monitoring
+OS - Oracle Linux 709
+DB - Oracle19C (Non-Pdb) 
+
+$ cd /usr/local/prometheus
+$ mkdir -p oracle_exporter
+$ touch /usr/local/prometheus/oracle_exporter/oracle-19c-si.yml
+
+** YAML 파일 빈줄에 \t \s 확인 및 들여쓰기 확인(2칸,4칸) **
+
+$ vi /usr/local/prometheus/prometheus.yml
+=====================================================================================
+
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          app: "prometheus"
+		  
+# 아래 잡 추가
+		  
+  - job_name: 'oracle'
+	metrics_path: '/api/v0/component/prometheus.exporter.oracledb.oracle/metrics'
+    file_sd_configs:
+      - files:
+        - /usr/local/prometheus/oracle_exporter/*.yml
+        refresh_interval: 30s
+        
+================================================================================
+        
+ 
+$ vi /usr/local/prometheus/oracle_exporter/oracle-19c-si.yml
+
+==============================================================
+
+- targets: ['192.168.56.101:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-si'
+	
+==============================================================
+
+** 타겟 추가시 파일 생성하여 추가만 하면됨 / 재시작 필요 X	
+	
+$ systemctl restart prometheus
+
+
+
+
+
+$ vi /usr/local/prometheus/oracle_exporter/oracle-19c-dg.yml
+==============================================================
+
+- targets: ['192.168.56.102:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-dg-primary'
+
+- targets: ['192.168.56.103:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-dg-standby'
+	
+==============================================================
+
+
+
+$ vi /usr/local/prometheus/oracle_exporter/oracle-19c-rac.yml
+=================================================================
+
+- targets: ['192.168.56.11:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-rac01'
+
+- targets: ['192.168.56.12:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-rac02'
+	
+- targets: ['192.168.56.13:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-rac03'
+	
+=================================================================
+
+
+$ vi /usr/local/prometheus/oracle_exporter/oracle-19c-rman.yml
+=================================================================
+
+- targets: ['192.168.56.199:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-rman'
+	
+=================================================================
+
+
+** E:\Git2\Database\Infra\Monitoring\prometheus_oracle_yaml\

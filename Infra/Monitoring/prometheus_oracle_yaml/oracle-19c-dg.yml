@@ -1,0 +1,7 @@
+- targets: ['192.168.56.102:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-dg-primary'
+
+- targets: ['192.168.56.103:12345']			## target ip
+  labels:
+    instance: 'oracle-19c-dg-standby'

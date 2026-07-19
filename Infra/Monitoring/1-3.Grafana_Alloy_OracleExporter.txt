@@ -1,0 +1,92 @@
+Grafana Alloy Oracle Exporter
+
+Host -orcl-19c-si
+OS - Oracle Linux 709
+DB - Oracle19C (Non-Pdb) 
+
+-- Reference Document
+** https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.oracledb/
+
+// 모니터링용 계정 생성
+
+SQL> CREATE USER prometheus IDENTIFIED BY oracle;
+SQL> GRANT CREATE SESSION TO prometheus;
+SQL> GRANT SELECT ANY DICTIONARY TO prometheus;
+SQL> GRANT SELECT_CATALOG_ROLE TO prometheus;
+
+** container database 사용시 c##prometheus 
+
+// Oracle Instant Client Basic 설치
+
+** https://www.oracle.com/database/technologies/instant-client/downloads.html
+
+ oracle-instantclient19.31-basiclite-19.31.0.0.0-2.x86_64
+ 
+$ wget https://yum.oracle.com/repo/OracleLinux/OL7/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.31-basiclite-19.31.0.0.0-2.x86_64.rpm
+or 
+직접 받아서 ftp로 전송
+
+$ su - root
+# rpm -Uvh oracle-instantclient19.31-basiclite-19.31.0.0.0-2.x86_64.rpm
+# rpm -ql oracle-instantclient19.31-basiclite | grep libclntsh
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so.10.1
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so.11.1
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so.12.1
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so.18.1
+/usr/lib/oracle/19.31/client64/lib/libclntsh.so.19.1
+/usr/lib/oracle/19.31/client64/lib/libclntshcore.so
+/usr/lib/oracle/19.31/client64/lib/libclntshcore.so.19.1
+
+
+$ systemctl cat alloy | grep -i EnvironmentFile
+EnvironmentFile=/etc/default/alloy
+
+$ vi /etc/default/alloy 
+===============================================
+
+CONFIG_FILE="/etc/alloy/config.alloy"
+CUSTOM_ARGS=""
+LD_LIBRARY_PATH="/usr/lib/oracle/19.31/client64/lib"
+TNS_ADMIN="/u01/app/oracle/product/19.3.0/dbhome_1/network/admin"
+
+===================================================
+
+$ vi /etc/alloy/config.alloy
+==================================================================================
+prometheus.exporter.unix "node" {
+}
+
+prometheus.exporter.oracledb "oracle" {
+  database {
+	name              = "orcl-19c-si"
+	connection_string = "oracle://prometheus:oracle@orcl_19c_si"
+  }
+  #custom_metrics = ["/etc/alloy/oracle_dataguard_metrics.toml"]
+  
+  or 
+  
+  database {
+	name              = "orcl-19c-si"	# 프로메테우스에서 식별할 이름
+	connection_string = "orcl_19c_si"
+	username          = "prometheus"
+	password          = "oracle"
+  }
+
+}
+
+==========================================================================
+** custom_metrics는 향후 추가 예정
+
+
+$ curl -s http://localhost:12345/api/v0/component/prometheus.exporter.oracledb.oracle/metrics | grep -E "^oracledb_up|^oracledb_exporter"
+oracledb_exporter_last_database_scrape_duration_seconds{database="orcl-19c-si"} 0.074090154
+oracledb_exporter_last_scrape_duration_seconds 0.074101846
+oracledb_exporter_last_scrape_error 0
+oracledb_exporter_scrapes_total 5
+oracledb_up{database="orcl-19c-si"} 1
+
+-- metrics_path: "/api/v0/component/prometheus.exporter.oracledb.oracle/metrics",
+
+//WebConsoloe 
+http://192.168.56.101:12345

@@ -1,4 +1,4 @@
-Prometheus NodeExporter
+Prometheus MysqldExporter
 
 Host - Monitoring
 OS - Rocky908
@@ -6,6 +6,8 @@ OS - Rocky908
 $ cd /usr/local/prometheus
 $ mkdir -p mysqld_exporter
 $ touch /usr/local/prometheus/mysqld_exporter/mysql-84-source.yml
+
+** YAML 파일 빈줄에 \t \s 확인 및 들여쓰기 확인(2칸,4칸) **
 
 $ vi /usr/local/prometheus/prometheus.yml
 =====================================================================================
