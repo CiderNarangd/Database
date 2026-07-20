@@ -1,0 +1,185 @@
+Loki alloy
+
+Mysql SlowQuery 수집
+
+Host - mysql-84-source , monitoring( 192.168.56.52 / loki)
+OS - Rocky - 908
+** reference document - https://grafana.com/docs/alloy/latest/reference/components/loki/
+					  - https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/
+					  
+
+					  
+// mysql slow query 활성화
+mysql> SET GLOBAL slow_query_log = 'ON';
+mysql> SET GLOBAL long_query_time = 1;  
+mysql> SET GLOBAL log_output = 'FILE';
+mysql> SET GLOBAL slow_query_log_file = '/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log';
+
+** 영구적용은 /etc/my.cnf 수정 or persistpersist  옵션 사용
+$ vi /etc/my.cnf
+
+=======================================
+
+[mysqld]
+slow_query_log = 1
+slow_query_log_file = /u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log
+long_query_time = 1
+log_slow_extra = ON   -- 8.0.14+, Thread_id/Errno 등 추가 필드
+
+========================================
+-- persist 옵션
+mysql> SET persist slow_query_log = 'ON';
+mysql> SET persist long_query_time = 1;  
+mysql> SET persist log_output = 'FILE';
+mysql> SET persist slow_query_log_file = '/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log';
+
+// alloy mysql 그룹에 추가
+$ usermod -aG mysql alloy
+
+// loki 컴포넌트 추가
+$ vi /etc/alloy/config.alloy 
+
+==========================================================
+
+// === Loki write endpoint ===
+loki.write "default" {
+  endpoint {
+    url = "http://192.168.56.52:3100/loki/api/v1/push"
+  }
+}
+
+// === MySQL slow query log ===
+local.file_match "mysql_slowlog" {
+  path_targets = [{
+    __path__ = "/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log",
+    job      = "mysql_slowlog",
+    host     = constants.hostname,
+  }]
+}
+
+loki.source.file "mysql_slowlog" {
+  targets    = local.file_match.mysql_slowlog.targets
+  forward_to = [loki.process.mysql_slowlog.receiver]
+}
+
+loki.process "mysql_slowlog" {
+  stage.multiline {
+    firstline     = "^# Time: "
+    max_wait_time = "3s"
+  }
+
+  stage.regex {
+    expression = "(?s)# Time: (?P<time>\\S+)\\n# User@Host: (?P<user_host>[^\\n]*)\\n# Query_time: (?P<query_time>[0-9.]+)\\s+Lock_time: (?P<lock_time>[0-9.]+)\\s+Rows_sent: (?P<rows_sent>[0-9]+)\\s+Rows_examined: (?P<rows_examined>[0-9]+)"
+  }
+  
+  stage.timestamp {
+    source = "time"
+    format = "2006-01-02T15:04:05.999999999Z"
+  }
+
+  stage.labels {
+    values = {
+      job  = "",
+      host = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      query_time    = "",
+      lock_time     = "",
+      rows_sent     = "",
+      rows_examined = "",
+      user_host     = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+==========================================================
+
+$ alloy fmt /etc/alloy/config.alloy 
+$ systemctl restart alloy
+$ journalctl -u alloy -f
+
+curl http://localhost:12345/
+//Web Console에서 확인
+ 192.168.56.201:12345
+
+-- In Loki Host
+curl -s -G "http://192.168.56.52:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={job="mysql_slowlog"}' \
+  --data-urlencode 'start=2026-07-20T00:00:00Z' \
+  --data-urlencode 'end=2026-07-20T23:59:59Z' \
+  --data-urlencode 'limit=10' | python3 -m json.tool
+
+
+// slow query 발생
+SELECT SLEEP(2);
+
+mysql> use test;
+mysql> 
+CREATE TABLE slow_dummy (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(50),
+    order_date DATETIME,
+    amount INT
+);
+
+-- 재귀 쿼리(CTE)를 사용해 10만 건 이상의 데이터 생성
+
+mysql> SET SESSION cte_max_recursion_depth = 200000;
+mysql> INSERT INTO slow_dummy (user_name, order_date, amount)
+WITH RECURSIVE cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 100000
+)
+SELECT 
+    CONCAT('User_', FLOOR(RAND() * 1000)),
+    DATE_SUB(NOW(), INTERVAL FLOOR(RAND() * 365) DAY),
+    FLOOR(RAND() * 100000)
+FROM cte;
+
+SELECT COUNT(*) 
+FROM slow_dummy t1 
+JOIN slow_dummy t2 ON 1=1 
+WHERE t1.amount > 5000;
+
+
+// logcli로 수집 확인
+$ logcli query '{job="mysql_slowlog"}' --since=1h
+
+[kinam@monitoring bin]$ logcli query '{job="mysql_slowlog"}' --since=1h
+2026/07/20 23:03:00 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784556180134061895&limit=30&query=%7Bjob%3D%22mysql_slowlog%22%7D&start=1784552580134061895
+2026/07/20 23:03:00 Common labels: {detected_level="unknown", filename="/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log", host="mysql-84-source", job="mysql_slowlog", service_name="mysql_slowlog"}
+2026-07-20T22:53:36+09:00 {}                                                                                                                                       Time                 Id Command    Argument
+2026-07-20T22:53:36+09:00 {}                                                                                                                                       Tcp port: 3306  Unix socket: /u01/mysql/mysqltemplate/DATA/mysql.sock
+2026-07-20T22:53:36+09:00 {}                                                                                                                                       /usr/local/mysql/bin/mysqld, Version: 8.4.8 (MySQL Community Server - GPL). started with:
+2026-07-20T22:15:27+09:00 {lock_time="0.000003", query_time="178.816733", rows_examined="172028", rows_sent="0", user_host="root[root] @ localhost []  Id:     8"} # Time: 2026-07-20T13:15:27.874007Z
+# User@Host: root[root] @ localhost []  Id:     8
+# Query_time: 178.816733  Lock_time: 0.000003 Rows_sent: 0  Rows_examined: 172028 Thread_id: 8 Errno: 1317 Killed: 0 Bytes_received: 94 Bytes_sent: 83 Read_first: 2 Read_last: 0 Read_key: 2 Read_next: 72027 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 100001 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2026-07-20T13:12:29.057274Z End: 2026-07-20T13:15:27.874007Z
+use test;
+SET timestamp=1784553149;
+SELECT COUNT(*) 
+FROM slow_dummy t1 
+JOIN slow_dummy t2 ON 1=1 
+WHERE t1.amount > 50000;
+2026-07-20T22:07:02+09:00 {lock_time="0.000000", query_time="2.000680", rows_examined="1", rows_sent="1", user_host="root[root] @ localhost []  Id:     8"}        # Time: 2026-07-20T13:07:02.802230Z
+# User@Host: root[root] @ localhost []  Id:     8
+# Query_time: 2.000680  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1 Thread_id: 8 Errno: 0 Killed: 0 Bytes_received: 22 Bytes_sent: 56 Read_first: 0 Read_last: 0 Read_key: 0 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 0 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2026-07-20T13:07:00.801550Z End: 2026-07-20T13:07:02.802230Z
+SET timestamp=1784552820;
+SELECT SLEEP(2);
+2026/07/20 23:03:00 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784552822802230001&limit=26&query=%7Bjob%3D%22mysql_slowlog%22%7D&start=1784552580134061895
+2026/07/20 23:03:00 Common labels: {detected_level="unknown", filename="/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log", host="mysql-84-source", job="mysql_slowlog", lock_time="0.000000", query_time="2.000680", rows_examined="1", rows_sent="1", service_name="mysql_slowlog", user_host="root[root] @ localhost []  Id:     8"}
+
+
+[kinam@monitoring bin]$ logcli query '{job="mysql_slowlog"}' --since=1h -o jsonl | python3 -m json.tool
+2026/07/20 23:05:51 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784556351444810585&limit=30&query=%7Bjob%3D%22mysql_slowlog%22%7D&start=1784552751444810585
+2026/07/20 23:05:51 Common labels: {detected_level="unknown", filename="/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log", host="mysql-84-source", job="mysql_slowlog", service_name="mysql_slowlog"}
+2026/07/20 23:05:51 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784552822802230001&limit=25&query=%7Bjob%3D%22mysql_slowlog%22%7D&start=1784552751444810585
+2026/07/20 23:05:51 Common labels: {detected_level="unknown", filename="/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log", host="mysql-84-source", job="mysql_slowlog", lock_time="0.000000", query_time="2.000680", rows_examined="1", rows_sent="1", service_name="mysql_slowlog", user_host="root[root] @ localhost []  Id:     8"}
+Extra data: line 2 column 1 (char 761)
+
+** LogRotate 작업 필요

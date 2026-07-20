@@ -1,0 +1,15 @@
+Loki Logcli Install
+
+OS - Rocky908
+Host - Monitoring
+
+$ unzip logcli-linux-amd64.zip
+$ chmod +x logcli-linux-amd64
+$ mv logcli-linux-amd64 /usr/local/bin/logcli
+$ logcli --version
+logcli, version 3.7.2 (branch: release-3.7.x, revision: 7486c4a7)
+  build user:       root@623d39919632
+  build date:       2026-05-13T08:54:45Z
+  go version:       go1.26.2
+  platform:         linux/amd64
+  tags:             netgo
