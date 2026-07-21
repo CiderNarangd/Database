@@ -149,7 +149,7 @@ WHERE t1.amount > 5000;
 
 
 // logcli로 수집 확인
-$ logcli query '{job="mysql_slowlog"}' --since=1h
+$ logcli query '{job="mysql_slowlog"}' --since=1h --quiet
 
 [kinam@monitoring bin]$ logcli query '{job="mysql_slowlog"}' --since=1h
 2026/07/20 23:03:00 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784556180134061895&limit=30&query=%7Bjob%3D%22mysql_slowlog%22%7D&start=1784552580134061895

@@ -1,0 +1,229 @@
+Loki alloy
+
+Mysql SlowQuery 수집
+
+Host - orcl-19c-si , monitoring( 192.168.56.52 / loki)
+OS - OEL709
+** reference document - https://grafana.com/docs/alloy/latest/reference/components/loki/
+					  - https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/
+
+		
+// 로그 수집용 계정 권한부여 (prometheus 계정 재활용)
+GRANT SELECT_CATALOG_ROLE TO prometheus;
+GRANT SELECT ON V_$SQL TO prometheus;	  
+				
+// Test용 스키마 생성
+-- 계정 생성
+SQL> CREATE USER slowtest IDENTIFIED BY oracle
+	DEFAULT TABLESPACE users
+	QUOTA UNLIMITED ON users;
+
+-- 권한 부여
+SQL> GRANT CONNECT, RESOURCE TO slowtest;
+SQL> GRANT CREATE SESSION TO slowtest;
+SQL> GRANT CREATE TABLE TO slowtest;
+SQL> GRANT CREATE SEQUENCE TO slowtest;
+
+-- Dummy Data 생성
+
+SQL> CONNECT slowtest/oracle
+
+SQL> CREATE TABLE slow_dummy (
+  id          NUMBER        PRIMARY KEY,
+  cust_name   VARCHAR2(50),
+  region      VARCHAR2(20),
+  amount      NUMBER(12,2),
+  status      VARCHAR2(10),
+  created_at  DATE,
+  notes       VARCHAR2(200)
+);
+
+SQL>
+INSERT INTO slow_dummy
+SELECT
+  LEVEL,
+  'CUST_' || TO_CHAR(MOD(LEVEL, 5000)),
+  CASE MOD(LEVEL, 4)
+    WHEN 0 THEN 'SEOUL'
+    WHEN 1 THEN 'BUSAN'
+    WHEN 2 THEN 'INCHEON'
+    ELSE 'DAEGU'
+  END,
+  ROUND(DBMS_RANDOM.VALUE(1000, 999999), 2),
+  CASE MOD(LEVEL, 3) WHEN 0 THEN 'DONE' WHEN 1 THEN 'PENDING' ELSE 'CANCEL' END,
+  SYSDATE - MOD(LEVEL, 365),
+  'note_' || LEVEL
+FROM DUAL
+CONNECT BY LEVEL <= 1000000;
+ 
+COMMIT;
+
+-- slowquery 유발
+SQL>
+SELECT COUNT(*)
+FROM slow_dummy a, slow_dummy b
+WHERE a.region = b.region
+  AND a.status != b.status;
+
+
+$ vi /storage/downloads/collect_slowquery.sh
+$ chmod +x collect_slowquery.sh
+$ crontab -e			
+*/5 * * * *
+$ ./collect_slowquery.sh orcl
+===========================================================
+
+#!/bin/bash
+export ORACLE_SID="${1:?Usage: $0 <ORACLE_SID>}"
+export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1 
+export PATH=$ORACLE_HOME/bin:$PATH
+ 
+OUT_DIR=/storage/downloads
+OUT_FILE="${OUT_DIR}/${ORACLE_SID}-SlowQuery.log"
+ 
+mkdir -p "$OUT_DIR"
+ 
+sqlplus -s prometheus/oracle <<SQL >> "$OUT_FILE"
+SET PAGESIZE 0 LINESIZE 2000 FEEDBACK OFF HEADING OFF TRIMSPOOL ON TERMOUT OFF ECHO OFF
+SET TIMING OFF TIME OFF VERIFY OFF AUTOTRACE OFF SQLPROMPT ''
+SET NEWPAGE NONE
+
+SELECT 'time="'   || TO_CHAR(SYSTIMESTAMP,'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') || '" ' ||
+       'oracle_sid="' || SYS_CONTEXT('USERENV','INSTANCE_NAME') || '" ' ||
+       'sql_id="' || sql_id || '" ' ||
+       'schema="' || NVL(parsing_schema_name,'-') || '" ' ||
+       'avg_time_sec="' || ROUND(elapsed_time / executions / 1000000, 3) || '" ' ||
+       'executions="' || executions || '" ' ||
+       'last_active="' || TO_CHAR(last_active_time,'YYYY-MM-DD"T"HH24:MI:SS') || '" ' ||
+       'sql_text="' || REPLACE(REPLACE(SUBSTR(sql_text,1,300),CHR(10),' '),'"','''') || '"'
+FROM v\$sql
+WHERE executions > 0
+  AND last_active_time >= SYSDATE - (5/1440)
+  AND parsing_schema_name NOT IN
+      ('SYS','SYSTEM','DBSNMP','OUTLN','APPQOSSYS','DBSFWUSER','GGSYS',
+       'XS\$NULL','WMSYS','ORDSYS','ORDDATA','CTXSYS','MDSYS','OLAPSYS',
+       'GSMADMIN_INTERNAL','MONUSER')
+  AND elapsed_time / executions / 1000000 >= 1;
+ 
+EXIT;
+SQL
+
+===============================================================
+
+$ cat orcl-SlowQuery.log 
+time="2026-07-21T21:53:53+09:00" oracle_sid="orcl" sql_id="acxz51tsvts6z" schema="SLOWTEST" avg_time_sec="65.005" executions="1" last_active="2026-07-21T21:49:43" sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region      AND a.status != b.status"
+time="2026-07-21T21:54:40+09:00" oracle_sid="orcl" sql_id="acxz51tsvts6z" schema="SLOWTEST" avg_time_sec="38.077" executions="2" last_active="2026-07-21T21:54:35" sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region      AND a.status != b.status"
+
+
+// logrotate 설정
+$ vi /etc/logrotate.d/oracle-slowlog
+=========================================
+/storage/downloads/*-slow.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate			<<<<
+}
+=========================================
+
+
+// loki 컴포넌트 추가
+$ vi /etc/alloy/config.alloy 
+
+==========================================================
+
+// === Loki write endpoint ===
+loki.write "default" {
+  endpoint {
+    url = "http://192.168.56.52:3100/loki/api/v1/push"
+  }
+}
+
+// === Oracle slow query log ===
+local.file_match "oracle_slowlog" {
+  path_targets = [{
+    __path__ 	= "/storage/downloads/orcl-SlowQuery.log",
+    job      	= "oracle_slowlog",
+    host     	= constants.hostname,
+	oracle_sid  = "orcl",
+  }]
+}
+
+loki.source.file "oracle_slowlog" {
+  targets    = local.file_match.oracle_slowlog.targets
+  forward_to = [loki.process.oracle_slowlog.receiver]
+}
+
+loki.process "oracle_slowlog" {
+  stage.logfmt {
+    mapping = {
+      "time"         = "",
+      "oracle_sid"   = "",
+      "sql_id"       = "",
+      "schema"       = "",
+      "avg_time_sec" = "",
+      "executions"   = "",
+      "last_active"  = "",
+      "sql_text"     = "",
+    }
+  }
+
+  stage.timestamp {
+    source = "time"
+    format = "2006-01-02T15:04:05Z07:00"
+  }
+
+  stage.labels {
+    values = {
+      job        = "",
+      host       = "",
+      oracle_sid = "",
+      schema     = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      sql_id       = "",
+      avg_time_sec = "",
+      executions   = "",
+      last_active  = "",
+      sql_text     = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+==========================================================
+
+$ alloy fmt /etc/alloy/config.alloy 
+$ systemctl restart alloy
+$ journalctl -u alloy -f
+
+curl http://localhost:12345/
+//Web Console에서 확인
+ 192.168.56.101:12345
+
+-- In Loki Host
+curl -s -G "http://192.168.56.52:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={job="oracle_slowlog"}' \
+  --data-urlencode 'start=2026-07-20T00:00:00Z' \
+  --data-urlencode 'end=2026-07-21T23:59:59Z' \
+  --data-urlencode 'limit=10' | python3 -m json.tool
+
+
+// logcli로 수집 확인
+$ logcli query '{job="oracle_slowlog"}' --since=1h --quiet
+2026/07/21 22:18:05 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784639885548050573&limit=30&query=%7Bjob%3D%22oracle_slowlog%22%7D&start=1784636285548050573
+2026/07/21 22:18:05 Common labels: {detected_level="unknown", filename="/storage/downloads/orcl-SlowQuery.log", host="orcl-19c-si", job="oracle_slowlog", oracle_sid="orcl", schema="SLOWTEST", service_name="oracle_slowlog", sql_id="acxz51tsvts6z", sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region\t AND a.status != b.status"}
+2026-07-21T21:54:40+09:00 {avg_time_sec="38.077", executions="2", last_active="2026-07-21T21:54:35"} time="2026-07-21T21:54:40+09:00" oracle_sid="orcl" sql_id="acxz51tsvts6z" schema="SLOWTEST" avg_time_sec="38.077" executions="2" last_active="2026-07-21T21:54:35" sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region    AND a.status != b.status"
+2026-07-21T21:53:53+09:00 {avg_time_sec="65.005", executions="1", last_active="2026-07-21T21:49:43"} time="2026-07-21T21:53:53+09:00" oracle_sid="orcl" sql_id="acxz51tsvts6z" schema="SLOWTEST" avg_time_sec="65.005" executions="1" last_active="2026-07-21T21:49:43" sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region    AND a.status != b.status"
+2026/07/21 22:18:05 http://localhost:3100/loki/api/v1/query_range?direction=BACKWARD&end=1784638433000000001&limit=29&query=%7Bjob%3D%22oracle_slowlog%22%7D&start=1784636285548050573
+2026/07/21 22:18:05 Common labels: {avg_time_sec="65.005", detected_level="unknown", executions="1", filename="/storage/downloads/orcl-SlowQuery.log", host="orcl-19c-si", job="oracle_slowlog", last_active="2026-07-21T21:49:43", oracle_sid="orcl", schema="SLOWTEST", service_name="oracle_slowlog", sql_id="acxz51tsvts6z", sql_text="SELECT COUNT(*) FROM slow_dummy a, slow_dummy b WHERE a.region = b.region\t AND a.status != b.status"}
+
+
+** LogRotate 작업 필요
