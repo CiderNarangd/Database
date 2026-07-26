@@ -1,3 +1,4 @@
 - targets: ['192.168.56.199:12345']			## target ip
   labels:
     instance: 'orcl-19c-rman'
+    hostname: 'orcl-19c-rman'

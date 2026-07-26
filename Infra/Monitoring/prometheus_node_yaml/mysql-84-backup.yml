@@ -1,3 +1,4 @@
 - targets: ['192.168.56.222:12345']			## target ip
   labels:
     instance: 'mysql-84-backup'
+    hostname: 'mysql-84-backup'

@@ -53,7 +53,8 @@ local.file_match "mysql_slowlog" {
   path_targets = [{
     __path__ = "/u01/mysql/mysqltemplate/DATA/mysql-84-source-slow.log",
     job      = "mysql_slowlog",
-    host     = constants.hostname,
+    hostname = "mysql-84-source",   // constants.hostname or 호스트명 하드코딩
+    instance = "mysql-84-source", 
   }]
 }
 
@@ -71,17 +72,10 @@ loki.process "mysql_slowlog" {
   stage.regex {
     expression = "(?s)# Time: (?P<time>\\S+)\\n# User@Host: (?P<user_host>[^\\n]*)\\n# Query_time: (?P<query_time>[0-9.]+)\\s+Lock_time: (?P<lock_time>[0-9.]+)\\s+Rows_sent: (?P<rows_sent>[0-9]+)\\s+Rows_examined: (?P<rows_examined>[0-9]+)"
   }
-  
+
   stage.timestamp {
     source = "time"
     format = "2006-01-02T15:04:05.999999999Z"
-  }
-
-  stage.labels {
-    values = {
-      job  = "",
-      host = "",
-    }
   }
 
   stage.structured_metadata {

@@ -1,11 +1,12 @@
 - targets: ['192.168.56.11:12345']			## target ip
   labels:
-    instance: 'mysql-ibc-router'
-
+    instance: 'orcl-19c-rac01'
+    hostname: 'orcl-19c-rac01'
 - targets: ['192.168.56.12:12345']			## target ip
   labels:
-    instance: 'mysql-ibc-primary'
-
+    instance: 'orcl-19c-rac02'
+    hostname: 'orcl-19c-rac02'
 - targets: ['192.168.56.13:12345']			## target ip
   labels:
-    instance: 'mysql-ibc-sec01'
+    instance: 'orcl-19c-rac03'
+    hostname: 'orcl-19c-rac03'

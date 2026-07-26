@@ -1,7 +1,8 @@
 - targets: ['192.168.56.201:12345']			## target ip
   labels:
     instance: 'mysql-84-source'
-
+    hostname: 'mysql-84-source'
 - targets: ['192.168.56.202:12345']			## target ip
   labels:
     instance: 'mysql-84-replica'
+    hostname: 'mysql-84-replica'

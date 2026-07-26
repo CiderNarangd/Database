@@ -1,15 +1,16 @@
 - targets: ['192.168.56.210:12345']			## target ip
   labels:
     instance: 'mysql-ibc-router'
-
+    hostname: 'mysql-ibc-router'
 - targets: ['192.168.56.211:12345']			## target ip
   labels:
     instance: 'mysql-ibc-primary'
-
+    hostname: 'mysql-ibc-primary'
 - targets: ['192.168.56.212:12345']			## target ip
   labels:
     instance: 'mysql-ibc-sec01'
-
+    hostname: 'mysql-ibc-sec01'
 - targets: ['192.168.56.213:12345']			## target ip
   labels:
     instance: 'mysql-ibc-sec02'
+    hostname: 'mysql-ibc-sec02'

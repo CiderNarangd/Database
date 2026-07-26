@@ -70,6 +70,9 @@ $ vi /storage/downloads/collect_slowquery.sh
 $ chmod +x collect_slowquery.sh
 $ crontab -e			
 */5 * * * *
+
+** 5분마다 설정
+
 $ ./collect_slowquery.sh orcl
 ===========================================================
 
@@ -98,12 +101,12 @@ SELECT 'time="'   || TO_CHAR(SYSTIMESTAMP,'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') || '
        'sql_text="' || REPLACE(REPLACE(SUBSTR(sql_text,1,300),CHR(10),' '),'"','''') || '"'
 FROM v\$sql
 WHERE executions > 0
-  AND last_active_time >= SYSDATE - (5/1440)
+  AND last_active_time >= SYSDATE - (5/1440)		# 스크립트 기준 수집할 시간값
   AND parsing_schema_name NOT IN
       ('SYS','SYSTEM','DBSNMP','OUTLN','APPQOSSYS','DBSFWUSER','GGSYS',
        'XS\$NULL','WMSYS','ORDSYS','ORDDATA','CTXSYS','MDSYS','OLAPSYS',
        'GSMADMIN_INTERNAL','MONUSER')
-  AND elapsed_time / executions / 1000000 >= 1;
+  AND elapsed_time / executions / 1000000 >= 1;		# slow query 임계치값
  
 EXIT;
 SQL

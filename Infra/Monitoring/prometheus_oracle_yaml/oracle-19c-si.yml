@@ -1,3 +1,4 @@
 - targets: ['192.168.56.101:12345']			## target ip
   labels:
     instance: 'oracle-19c-si'
+    hostname: 'oracle-19c-si'
