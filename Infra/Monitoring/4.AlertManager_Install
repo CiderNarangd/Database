@@ -1,0 +1,68 @@
+AlertManager Install
+
+OS 					- Rocky 908
+Prometheus Version 	- 3.13.1
+Port				- 9093
+
+$ tar -xvf alertmanager-0.33.1.linux-amd64.tar.gz
+$ ./alertmanager-0.33.1.linux-amd64/alertmanager --version
+alertmanager, version 0.33.1 (branch: HEAD, revision: 2c8da51e03f3dbbed24f9711ca2d76aab4eef9c5)
+  build user:       root@34d840a05dd5
+  build date:       20260704-19:26:21
+  go version:       go1.26.4
+  platform:         linux/amd64
+  tags:             netgo
+  
+ 
+$ mv alertmanager-0.33.1.linux-amd64 alertmanager
+$ mv alertmanager /usr/local
+
+
+//환경변수 추가
+-- bash profile 추가
+$ vi .bash_profile
+==================================================
+
+export ALERTMANAGER_HOME=/usr/local/alertmanager
+export PATH=$ALERTMANAGER_HOME
+
+==================================================
+
+-- bashrc alias 추가
+$ vi .bashrc
+=============================================
+
+alias alert='cd ${ALERTMANAGER_HOME}'
+
+=============================================
+
+
+// Systemctl 등록
+
+$ vi /etc/systemd/system/alertmanager.service
+
+===============================================
+
+[Unit]
+Description=AlertManager
+After=network-online.target
+
+[Service]
+User=kinam
+Restart=on-failure
+ExecStart=/usr/local/alertmanager/alertmanager \
+  --config.file=/usr/local/alertmanager/alertmanager.yml \
+  --storage.path /u01/alertmanager/data	
+[Install]
+WantedBy=multi-user.target
+
+==================================================================
+
+$ systemctl daemon-reload
+$ systemctl start alertmanager
+$ systemctl status alertmanager
+$ systemctl stop alertmanager
+$ systemctl enable alertmanager
+
+** Alert Rule 
+	https://samber.github.io/awesome-prometheus-alerts/
