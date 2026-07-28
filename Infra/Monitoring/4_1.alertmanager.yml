@@ -1,0 +1,31 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'telegram-default'
+  group_by: ['alertname', 'hostname']
+  group_wait: 30s
+  group_interval: 1m
+  repeat_interval: 2m
+  routes:
+    - match:
+        job: mysql_slowlog
+      receiver: 'telegram-mysql-slowquery'
+
+receivers:
+  - name: 'telegram-default'
+    telegram_configs:
+      - bot_token: '7362568770:AAFeTcn-cSNAgZFtAj2E63NIrGCTAprWZTo'
+        chat_id: -4286286792
+        parse_mode: 'HTML'
+
+  - name: 'telegram-mysql-slowquery'
+    telegram_configs:
+      - bot_token: '7362568770:AAFeTcn-cSNAgZFtAj2E63NIrGCTAprWZTo'
+        chat_id: -4286286792
+        parse_mode: 'HTML'
+        message: |
+          <b>🐢 MySQL 슬로우쿼리 경고</b>
+          호스트: {{ .CommonLabels.hostname }}
+          발생건수: {{ .CommonAnnotations.description }}
+          상태: {{ .Status }}

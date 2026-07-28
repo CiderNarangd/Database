@@ -1,0 +1,51 @@
+Loki Mysql SlowQuery Alert
+
+** Alertmanager 설정은 4_1.alertmanager.yml 파일 참조
+
+// rule 디렉토리 추가
+$ mkdir -p /u01/loki/rules/fake
+$ sudo chown -R loki:loki /u01/loki/rules
+
+$ vi /etc/loki_config.yaml
+ -- 아래 ruler 부분 추가
+================================================
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /u01/loki/rules
+  rule_path: /tmp/loki/rules-temp
+  alertmanager_url: http://192.168.56.52:9093
+  enable_alertmanager_v2: true
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+  
+====================================================
+
+$ /u01/loki/rules/fake/mysql_slowlog.yml
+ -- ruler 파일 추가
+===================================================================/
+
+groups:
+  - name: mysql_slowquery_alerts
+    rules:
+      - alert: MySQLSlowQueryHigh
+        expr: |
+          sum(count_over_time({job="mysql_slowlog"}[5m])) > 10
+        for: 1m
+        labels:
+          severity: warning
+          job: mysql_slowlog
+        annotations:
+          summary: "MySQL 슬로우쿼리 급증 ({{ $labels.hostname }})"
+          description: "최근 5분간 슬로우쿼리 {{ $value }}건 발생"
+		  
+===================================================================/
+
+curl http://192.168.56.52:3100/loki/api/v1/rules
+curl http://192.168.56.52:3100/prometheus/api/v1/rules
+curl http://192.168.56.52:9093/api/v2/alerts
+amtool check-config /usr/local/alertmanager/alertmanager.yml

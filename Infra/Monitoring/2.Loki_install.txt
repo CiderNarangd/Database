@@ -27,6 +27,7 @@ $ wget https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-c
 
 $ vi loki-local-config.yaml
 $ mv loki-local-config.yaml /etc/loki_config.yaml
+$ chown -R kinam:kinam /etc/loki_config.yaml
 ===========================================================================
 
 auth_enabled: false
