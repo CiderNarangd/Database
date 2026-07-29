@@ -1,12 +1,64 @@
-global:
-  resolve_timeout: 5m
+DB Host Alert
+
+** Alertmanager 설정은 4_1.alertmanager.yml 파일 참조
+** Alert Rule 
+	https://samber.github.io/awesome-prometheus-alerts/
+
+$ vi /usr/local/prometheus/prometheus.yml
+ -- 아래 rule 설정 수정
+===================================================/
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "192.168.56.52:9093"
+
+rule_files:
+  - "/usr/local/prometheus/rule_node.yml"
+  - "/usr/local/prometheus/rule_mysqld.yml"
+  - "/usr/local/prometheus/rule_oracle.yml"
+  
+===================================================/
+-- 재시작
+$ systemctl restart prometheus
+
+// rule file 생성
+$ touch /usr/local/prometheus/rule_node.yml
+$ touch /usr/local/prometheus/rule_mysqld.yml
+$ touch /usr/local/prometheus/rule_oracle.yml
+
+-- node exporter rule 추가
+$ vi /usr/local/prometheus/rule_node.yml
+  * alertmanager_rule/rule_node.yml 파일 참조
+  
+-- mysqld exporter rule 추가
+$ vi /usr/local/prometheus/rule_node.yml
+  * alertmanager_rule/rule_mysqld.yml 파일 참조
+  
+-- oracle exporter rule 추가
+$ vi /usr/local/prometheus/rule_oracle.yml
+  * alertmanager_rule/rule_oracle.yml 파일 참조
+    
+$ promtool check rules /usr/local/prometheus/rule_node.yml
+$ promtool check rules /usr/local/prometheus/rule_mysqld.yml
+$ promtool check rules /usr/local/prometheus/rule_oracle.yml
+
+$ curl http://192.168.56.52:9090/api/v1/rules
+$ curl http://192.168.56.52:9090/api/v1/alertmanagers
+
+
+// AlertManager Route 추가
+$ vi /usr/local/alertmanager/alertmanager.yml
+
+====================================================/
 
 route:
   receiver: 'telegram-default'
   group_by: ['alertname', 'hostname']
   group_wait: 30s
-  group_interval: 1m
-  repeat_interval: 2m
+  group_interval: 5m
+  repeat_interval: 1h
   routes:
     - match:
         job: mysql_slowlog
@@ -45,10 +97,10 @@ receivers:
           호스트: {{ .CommonLabels.hostname }}
           발생건수: {{ .CommonAnnotations.description }}
           상태: {{ .Status }}
-
+		  
   - name: 'telegram-oracle-slowquery'
     telegram_configs:
-      - bot_token: '7362568770:AAFeTcn-cSNAgZFtAj2E63NIrGCTAprWZTo'
+      - bot_token: '<BOT_TOKEN>'
         chat_id: -4286286792
         parse_mode: 'HTML'
         message: |
@@ -89,6 +141,25 @@ receivers:
         message: |
           🔶 <b>Oracle 경고</b>
           알림명: {{ .CommonLabels.alertname }}
-          호스트: {{ .CommonLabels.instance }}
+          호스트: {{ .CommonLabels.hostname }}
           내용: {{ .CommonAnnotations.description }}
           상태: {{ .Status }}
+
+====================================================/
+$ systemctl restart alertmanager
+
+-- file check
+$ amtool check-config alertmanager.yml
+
+** prometheus alert_rule download url
+-- mysqld
+$ wget https://raw.githubusercontent.com/samber/awesome-prometheus-alerts/refs/heads/master/dist/rules/mysql/mysqld-exporter.yml
+
+-- node
+$ wget https://raw.githubusercontent.com/samber/awesome-prometheus-alerts/refs/heads/master/dist/rules/host-and-hardware/node-exporter.yml
+
+-- oracle
+$ wget https://raw.githubusercontent.com/samber/awesome-prometheus-alerts/refs/heads/master/dist/rules/oracle-database/iamseth-oracledb-exporter.yml
+
+
+

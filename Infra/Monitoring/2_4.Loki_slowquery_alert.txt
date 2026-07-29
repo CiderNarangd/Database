@@ -25,7 +25,7 @@ ruler:
   
 ====================================================
 
-$ /u01/loki/rules/fake/mysql_slowlog.yml
+$ vi /u01/loki/rules/fake/mysql_slowlog.yml
  -- ruler 파일 추가
 ===================================================================/
 
@@ -34,7 +34,7 @@ groups:
     rules:
       - alert: MySQLSlowQueryHigh
         expr: |
-          sum(count_over_time({job="mysql_slowlog"}[5m])) > 10
+          sum by (hostname) (count_over_time({job="mysql_slowlog"}[5m])) > 1
         for: 1m
         labels:
           severity: warning
@@ -42,6 +42,19 @@ groups:
         annotations:
           summary: "MySQL 슬로우쿼리 급증 ({{ $labels.hostname }})"
           description: "최근 5분간 슬로우쿼리 {{ $value }}건 발생"
+
+  - name: oracle_slowquery_alerts
+    rules:
+      - alert: OracleSlowQueryHigh
+        expr: |
+          sum by (hostname) (count_over_time({job="oracle_slowlog"}[5m])) > 10
+        for: 1m
+        labels:
+          severity: warning
+          job: oracle_slowlog
+        annotations:
+          summary: "Oracle 슬로우쿼리 급증 ({{ $labels.hostname }})"
+          description: "최근 5분간 슬로우쿼리 {{ $value }}건 발생"'E:\G
 		  
 ===================================================================/
 

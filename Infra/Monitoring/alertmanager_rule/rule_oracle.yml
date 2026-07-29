@@ -1,0 +1,89 @@
+groups:
+
+  - name: IamsethOracledbExporter
+    rules:
+      # 1분 유예를 두어 재시작 시 오탐(flapping) 방지
+      - alert: OracleDbDown
+        expr: 'oracledb_up == 0'
+        for: 1m
+        labels:
+          severity: critical
+          job: oracle
+        annotations:
+          summary: "Oracle DB 다운 (instance {{ $labels.instance }})"
+          description: "Oracle Database instance가 다운되었습니다: {{ $labels.instance }}\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # 임계치는 워크로드에 따라 다름. 환경에 맞게 85% 조정 필요
+      - alert: OracleDbSessionsHigh
+        expr: 'oracledb_resource_current_utilization{resource_name="sessions"} / oracledb_resource_limit_value{resource_name="sessions"} * 100 > 85 and oracledb_resource_limit_value{resource_name="sessions"} > 0'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 세션 한도 임박 (>85%) (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}의 세션 사용률이 85%를 초과했습니다 (현재값: {{ $value }}%)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # 임계치는 워크로드에 따라 다름. 환경에 맞게 85% 조정 필요
+      - alert: OracleDbProcessesHigh
+        expr: 'oracledb_resource_current_utilization{resource_name="processes"} / oracledb_resource_limit_value{resource_name="processes"} * 100 > 85 and oracledb_resource_limit_value{resource_name="processes"} > 0'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 프로세스 한도 임박 (>85%) (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}의 프로세스 사용률이 85%를 초과했습니다 (현재값: {{ $value }}%)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: OracleDbTablespaceHigh
+        expr: 'oracledb_tablespace_used_percent > 85'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 테이블스페이스 용량 임박 (>85%) (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}의 테이블스페이스 {{ $labels.tablespace }} 사용률이 85%를 초과했습니다 (현재값: {{ $value }}%)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: OracleDbTablespaceFull
+        expr: 'oracledb_tablespace_used_percent > 95'
+        for: 5m
+        labels:
+          severity: critical
+          job: oracle
+        annotations:
+          summary: "Oracle DB 테이블스페이스 포화 (>95%) (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}의 테이블스페이스 {{ $labels.tablespace }}가 심각하게 가득 찼습니다 (현재값: {{ $value }}%)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # 높은 롤백률(>20%)은 보통 애플리케이션 레벨 이슈(deadlock, 제약조건 위반, 잘못 설계된 트랜잭션 등)를 나타냄
+      - alert: OracleDbHighUserRollbacks
+        expr: 'rate(oracledb_activity_user_rollbacks[5m]) / (rate(oracledb_activity_user_commits[5m]) + rate(oracledb_activity_user_rollbacks[5m])) * 100 > 20 and (rate(oracledb_activity_user_commits[5m]) + rate(oracledb_activity_user_rollbacks[5m])) > 0'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 높은 롤백률 (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}에서 트랜잭션의 {{ $value }}%가 롤백되고 있습니다\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # 임계치는 워크로드에 크게 의존함. 환경에 맞게 200 조정 필요
+      - alert: OracleDbTooManyActiveSessions
+        expr: 'oracledb_sessions_value{status="ACTIVE", type="USER"} > 200'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 활성 세션 과다 (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}의 활성 사용자 세션 수가 과도합니다 (현재값: {{ $value }})\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # v$waitclassmetric 기반 정규화된 비율(초당 centisecond). 임계치 300 = 초당 3초의 I/O 대기시간
+      - alert: OracleDbHighUserIoWait
+        expr: 'oracledb_wait_time_user_io > 300'
+        for: 5m
+        labels:
+          severity: warning
+          job: oracle
+        annotations:
+          summary: "Oracle DB 높은 User I/O 대기시간 (instance {{ $labels.instance }})"
+          description: "{{ $labels.instance }}에서 User I/O 대기시간이 높게 발생하고 있습니다\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"

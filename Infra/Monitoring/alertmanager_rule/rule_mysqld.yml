@@ -1,0 +1,31 @@
+groups:
+  - name: mysql_alerts
+    rules:
+      - alert: MySQLDown
+        expr: mysql_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          job: mysql
+        annotations:
+          summary: "{{ $labels.hostname }} MySQL 다운"
+
+      - alert: MySQLReplicationLagHigh
+        expr: mysql_slave_status_seconds_behind_master > 60
+        for: 2m
+        labels:
+          severity: warning
+          job: mysql
+        annotations:
+          summary: "{{ $labels.hostname }} 복제 지연"
+          description: "지연시간 {{ $value }}초"
+
+      - alert: MySQLTooManyConnections
+        expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) * 100 > 80
+        for: 3m
+        labels:
+          severity: warning
+          job: mysql
+        annotations:
+          summary: "{{ $labels.hostname }} 커넥션 사용률 높음"
+          description: "{{ $value | printf \"%.1f\" }}%"

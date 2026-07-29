@@ -21,6 +21,9 @@ innodb_buffer_pool_size   = 4G
 
 binlog_expire_logs_seconds = 604800
 
+#log_timestamps 	= SYSTEM
+log_timestamps 	= UTC
+
 ########################################
 # Replication related settings
 ########################################

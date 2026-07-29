@@ -1,0 +1,40 @@
+groups:
+  - name: node_exporter
+    rules:
+      - alert: NodeDown
+        expr: up{job="node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          job: node
+        annotations:
+          summary: "{{ $labels.hostname }} node exporter 응답 없음"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (hostname) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 3m
+        labels:
+          severity: warning
+          job: node
+        annotations:
+          summary: "{{ $labels.hostname }} CPU 사용률 높음"
+          description: "현재 {{ $value | printf \"%.1f\" }}%"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          job: node
+        annotations:
+          summary: "{{ $labels.hostname }} 디스크 공간 부족"
+          description: "{{ $labels.mountpoint }} 남은 공간 {{ $value | printf \"%.1f\" }}%"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          job: node
+        annotations:
+          summary: "{{ $labels.hostname }} 메모리 사용률 높음"
