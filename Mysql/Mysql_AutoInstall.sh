@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-#  Mysql 9.7.0 Auto Install Script
-#  OS   : OEL 9.4
+#  Mysql 8.4.0 Auto Install Script
+#  OS   : Rocky 9.8
 #  User : mysql
 #
 # /storage/downloads file check & need dir
@@ -114,79 +114,4 @@ echo -e "\n"
 
  log "Complete Extract"
  echo -e "\n"
-
-
-
-
-
-# ============================================================
-# [10] DBCA Silent - DB 생성 (Archive Mode 포함)
-# ============================================================
-log "[STEP 9] DBCA Silent - DB Create"
-run_as_oracle "
-source /home/${OS_USER}/.bash_profile
-dbca -silent -createDatabase \
-  -templateName General_Purpose.dbc \
-  -gdbName ${DB_NAME} \
-  -sid ${DB_SID} \
-  -responseFile NO_VALUE \
-  -characterSet ${CHARSET} \
-  -nationalCharacterSet ${NCHARSET} \
-  -sysPassword '${SYS_PASSWORD}' \
-  -systemPassword '${SYSTEM_PASSWORD}' \
-  -datafileDestination ${DATA_DIR} \
-  -recoveryAreaDestination ${FRA_DIR} \
-  -recoveryAreaSize ${FRA_SIZE} \
-  -enableArchive true \
-  -memoryMgmtType AUTO_SGA \
-  -totalMemory ${TOTAL_MEMORY} \
-  -redoLogFileSize 200 \
-  -storageType FS \
-  -emConfiguration NONE \
-  -sampleSchema false 
-" || die "DBCA failed. log check: $LOG"
-
-log "DBCA Create DB Complete"
-
-echo -e "\n"
-# ============================================================
-# [11] /etc/oratab 등록 확인 & autostart 설정 ## 자동시작 필요없으면 패스해도될듯
-# ============================================================
-log "[STEP 10] oratab autostart set"
-sed -i "s|^${DB_SID}:.*|${DB_SID}:${ORACLE_HOME}:N|" /etc/oratab
-
-echo -e "\n"
-# ============================================================
-# [12] 설치 후 검증
-# ============================================================
-log "[STEP 11] Installation Verification"
-run_as_oracle "
-source /home/${OS_USER}/.bash_profile
-sqlplus -s / as sysdba << 'SQLEOF'
-SET PAGESIZE 20 LINESIZE 100
-SELECT instance_name, status, database_status FROM v\$instance;
-SELECT name, log_mode, open_mode FROM v\$database;
-ARCHIVE LOG LIST;
-EXIT;
-SQLEOF
-" | tee -a "$LOG"
-
-echo -e "\n"
-# ============================================================
-# [13] oracle 계정패스워드 변경
-# ============================================================
-log "[STEP 12] Change Oracle account passwd"
-echo "oracle:oracle" | chpasswd || die "Oracle account password change failed"
-log "Complete Oracle account change passwd"
-
-echo -e "\n"
-# ============================================================
-log "=== Install Complete ==="
-log "Log File	: $LOG"
-log "SID       	: ${DB_SID}"
-log "ORACLE_HOME: ${ORACLE_HOME}"
-log "Archive   	: ${ARCHIVE_DIR}"
-
-
-
 

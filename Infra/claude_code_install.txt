@@ -1,0 +1,23 @@
+Claude Code
+
+Host - Manager
+OS - Rocky908
+
+$ curl -fsSL https://claude.ai/install.sh | bash
+Setting up Claude Code...
+
+✔ Claude Code successfully installed!
+
+  Version: 2.1.220
+
+  Location: ~/.local/bin/claude
+
+
+  Next: Run claude --help to get started
+
+✅ Installation complete!
+
+
+$ claude --version
+2.1.220 (Claude Code)
+claude
