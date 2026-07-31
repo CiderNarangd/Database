@@ -1,0 +1,45 @@
+{% macro status_table(hosts, table_id, api_endpoint) %}
+<div class="table-scroll">
+<table id="{{ table_id }}" class="status-table" data-api="{{ api_endpoint }}">
+  <thead>
+    <tr>
+      <th>Hostname</th>
+      <th>IP</th>
+      <th>Cluster</th>
+      <th>Role</th>
+      <th>Service</th>
+      <th>Replication</th>
+      <th>Checked At</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for host in hosts %}
+    <tr data-hostname="{{ host.hostname }}">
+      <td>{{ host.hostname }}</td>
+      <td>{{ host.host_ip }}</td>
+      <td>{{ host.cluster_type }}</td>
+      <td>{{ host.role }}</td>
+      <td>
+        {% set svc = host.checks.get('service') %}
+        <span class="badge status-{{ svc.status if svc else 'unknown' }}" data-field="service-status">
+          {{ svc.status if svc else 'unknown' }}
+        </span>
+      </td>
+      <td>
+        {% set repl = host.checks.get('replication') %}
+        <span class="badge status-{{ repl.status if repl else 'unknown' }}" data-field="replication-status">
+          {{ repl.status if repl else 'unknown' }}
+        </span>
+        {% if repl and repl.detail %}<span class="detail">{{ repl.detail }}</span>{% endif %}
+      </td>
+      <td>
+        <span class="checked-at {% if svc and svc.is_stale %}stale{% endif %}" data-field="checked-at">
+          {{ svc.checked_at if svc else '-' }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}

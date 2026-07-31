@@ -1,0 +1,13 @@
+[Unit]
+Description=MySQL Lab Status Dashboard
+After=network.target mysqld.service
+
+[Service]
+WorkingDirectory=/storage/scripts/webapp
+EnvironmentFile=-/storage/scripts/webapp/.env
+ExecStart=/storage/scripts/webapp/.venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+User=kinam
+
+[Install]
+WantedBy=multi-user.target

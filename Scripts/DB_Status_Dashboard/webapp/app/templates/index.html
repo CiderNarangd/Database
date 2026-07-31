@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_table %}
+
+{% block content %}
+<div class="filter-bar">
+  <button type="button" class="filter-btn is-active" data-filter="all">전체</button>
+  <button type="button" class="filter-btn" data-filter="mysql">MySQL</button>
+  <button type="button" class="filter-btn" data-filter="oracle">Oracle</button>
+</div>
+
+<section class="panel" data-db-type="mysql">
+  <div class="panel-header">
+    <h2>MySQL</h2>
+  </div>
+  {{ status_table(mysql_hosts, "mysql-status-table", "/api/mysql/status") }}
+</section>
+
+<section class="panel" data-db-type="oracle">
+  <div class="panel-header">
+    <h2>Oracle</h2>
+  </div>
+  {{ status_table(oracle_hosts, "oracle-status-table", "/api/oracle/status") }}
+</section>
+
+<script src="/static/dashboard.js"></script>
+{% endblock %}
