@@ -1,0 +1,76 @@
+Percona Toolkit Install
+
+OS - Rocky908
+Host - manager
+Version - 3.6.0
+
+// 모듈 설치
+$ sudo dnf install -y perl-core 
+ ** 편의상 일괄설치 / 실행시 에러나는 패키지만 일일히 설치 가능.
+
+// 압축 해제
+$ tar -xvf percona-toolkit-3.6.0_x86_64.tar.gz
+$ mv percona-toolkit-3.6.0 percona-toolkit
+$ mv percona-toolkit /usr/local/
+
+
+//환경변수 셋팅
+
+$ vi .bash_profile
+
+====================================
+
+export PERCONA_TOOLKIT_HOME=/usr/local/percona-toolkit
+export PATH=$XTRABACKUP_HOME/bin:$MYSQL_HOME/bin:$PERCONA_TOOLKIT_HOME/bin:$PATH
+
+====================================
+$ source .bash_profile
+
+// 실행 확인
+$ pt-online-schema-change --version
+pt-online-schema-change 3.6.0
+
+$ pt-kill --version
+pt-kill 3.6.0
+
+** 프로그램별 용도
+pt-align                        - 다른 pt 도구(pt-diskstats 등)의 출력을 컬럼 정렬해서 보기 좋게 표시하는 내부 헬퍼
+pt-archiver                     - 오래된 row를 다른 테이블/파일로 아카이빙하면서 원본에서 삭제 (배치 삭제, nibble 방식이라 락 최소화)
+pt-config-diff                  - 두 서버의 my.cnf 설정 차이 비교
+pt-deadlock-logger               - 데드락 발생 이력을 테이블에 계속 기록
+pt-diskstats                    - iostat과 유사하게 디바이스/파티션별 디스크 I/O 통계를 더 세밀하게 필터링해서 보여줌
+pt-duplicate-key-checker        - 중복되거나 불필요하게 겹치는 인덱스 찾아줌
+pt-eustack-resolver             - eu-stack(elfutils) 스택 트레이스 출력의 심볼을 사람이 읽게 변환 (pt-pmp 보조용)
+pt-fifo-split                   - 대용량 파일을 실제로 나누지 않고 FIFO(named pipe)로 순차 처리 (디스크 공간 절약하며 대용량 로드/분석)
+pt-find                         - 크기/엔진/row count 등 조건에 맞는 테이블을 찾아서 지정한 명령 실행 (find 명령의 MySQL 버전)
+pt-fingerprint                  - 쿼리 하나를 fingerprint(정규화)만 뽑아내는 단독 유틸. query-digest 내부 로직을 별도로 쓰고 싶을 때
+pt-fk-error-logger              - 외래키 제약조건 위반 에러를 지속적으로 기록
+pt-galera-log-explainer         - Galera Cluster(PXC) 에러 로그를 사람이 읽기 쉽게 해석
+pt-heartbeat                    - 복제 지연(replication lag)을 초단위로 정밀 측정 (SHOW SLAVE STATUS보다 정확)
+pt-index-usage                  - 슬로우 로그 기준으로 실제 어떤 인덱스가 쓰였는지 분석해서, 안 쓰이는 인덱스 후보 찾아줌
+pt-ioprofile                    - strace 기반으로 프로세스가 어떤 파일에 I/O를 얼마나 하는지 프로파일링
+pt-k8s-debug-collector          - Kubernetes 환경에서 MySQL 관련 디버그 정보 자동 수집
+pt-kill                         - 조건(실행시간, 상태 등) 맞는 프로세스를 자동으로 kill. 폭주 쿼리 방어용
+pt-mext                         - SHOW GLOBAL STATUS 여러 스냅샷을 표 형태로 비교 (초당 변화율 확인)
+pt-mongodb-index-check          - MongoDB 인덱스 사용 점검 (pt-duplicate-key-checker의 Mongo 버전)
+pt-mongodb-query-digest         - MongoDB 프로파일 로그 기반 쿼리 분석 (pt-query-digest의 Mongo 버전)
+pt-mongodb-summary              - MongoDB 서버 설정/상태 요약 리포트
+pt-mysql-summary                - MySQL 서버 설정/상태를 한 화면에 요약 (신규 서버 파악, 장애 초기 진단용)
+pt-online-schema-change         - 락 없이 대용량 테이블 ALTER (트리거 기반 shadow table copy 방식). MySQL 8.0 native ALGORITHM=INSTANT/INPLACE로 안 되는 변경(예: PK 변경)에 여전히 유용
+pt-pg-summary                   - PostgreSQL 서버 설정/상태 요약 리포트
+pt-pmp                          - Poor Man's Profiler. 프로세스 스택 트레이스를 반복 샘플링해서 어디서 시간을 쓰는지 분석
+pt-query-digest                 - 슬로우 로그/제너럴 로그/binlog/tcpdump를 파싱해서 쿼리 fingerprint별 집계 (count, 평균/최대 실행시간, lock time 등). 지금 논의 중인 파이프라인의 핵심
+pt-secure-collect               - pt-stalk 등이 수집한 진단 데이터에서 비밀번호 등 민감정보 마스킹 후 압축 (외부 공유용)
+pt-show-grants                  - 사용자 권한을 정규화된 순서로 출력 (버전 관리, 서버 간 비교용)
+pt-sift                         - pt-stalk가 수집한 진단 데이터를 대화형으로 탐색
+pt-slave-delay                  - 레플리카를 의도적으로 지연시켜(지연 복제) 운영 실수 발생 시 복구용 백업본으로 활용
+pt-slave-find                   - 복제 토폴로지(마스터-레플리카 트리 구조) 탐색/시각화
+pt-slave-restart                - 레플리카가 에러로 멈추면 자동 재시작 (skip 방식, 운영에선 신중히 써야 함)
+pt-stalk                        - 특정 조건(threads_running 급증 등) 트리거 시 진단 정보(SHOW ENGINE INNODB STATUS, processlist 등) 자동 수집
+pt-summary                      - OS 레벨 서버 정보 요약 (pt-mysql-summary의 OS 버전)
+pt-table-checksum               - 마스터-레플리카 간 데이터 정합성 체크 (체크섬 비교). pt-table-sync와 세트로 씀
+pt-table-sync                   - 두 테이블(또는 마스터/레플리카) 간 데이터 불일치를 찾아서 동기화
+pt-table-usage                  - 쿼리 로그를 분석해서 어떤 테이블이 얼마나/어떻게(SELECT/INSERT 등) 사용되는지 통계
+pt-upgrade                      - 두 서버(예: 버전 업그레이드 전/후)에 동일 쿼리를 실행해서 결과/성능 차이 비교
+pt-variable-advisor             - 서버 변수(my.cnf 설정값)를 분석해서 위험하거나 권장되지 않는 설정 경고
+pt-visual-explain               - EXPLAIN 결과를 트리 형태로 시각화해서 실행 계획을 더 직관적으로 보여줌
