@@ -1,0 +1,8 @@
+ANTHROPIC_API_KEY=my-claude-api-key
+CLAUDE_MODEL=claude-opus-5
+LOKI_URL=http://192.168.56.52:3100
+TARGET_HOSTNAME=mysql-84-source
+TARGET_IP=192.168.56.201
+DB_USER=kinam-dba
+DB_PASS=oracle
+TOP_N=5
