@@ -1,0 +1,127 @@
+PGSQL 18 Install
+
+OS 			- Rocky 908
+Host 		- pgsql-master
+DB Version	- 18.4
+
+Reference doc url - https://www.postgresql.org/docs/18/installation.html
+
+// root로 진행
+$ su - root
+
+//종속성 설치
+$ dnf install llvm-devel clang icu libicu-devel pkgconfig libxml2-devel systemd-devel python3-devel perl-FindBin perl-core
+ * configure 시 옵션에 따라 필요한 종속성 달라질수 있음.
+
+// 계정 & 그룹 생성
+$ useradd -m -d /home/postgres -s /bin/bash postgres
+$ passwd postgres
+ -- oracle
+ 
+$ usermod -aG postgres kinam
+ 
+// 압축 해제
+$ tar -xvf postgresql-18.4.tar.gz
+$ mv postgresql-18.4 /usr/local/src/postgresql-18.4
+
+// pgsql 데이터&로그 디렉토리 생성
+$ mkdir -p /u01/pgsql/$HOSTNAME/data /u01/pgsql/$HOSTNAME/log
+
+
+// configure & build
+$ cd /usr/local/src/postgresql-18.4
+$ ./configure --prefix=/usr/local/pgsql \
+    --with-openssl \
+    --with-icu \
+    --with-libxml \
+    --with-systemd \
+	--with-python \
+	--with-llvm
+	
+$ make -j$(nproc)
+$ make install
+
+// contrib 모듈도 설치 (pg_stat_statements 등)
+$ cd contrib
+$ make -j$(nproc)
+$ make install
+$ cd ..
+
+
+// 디렉토리 권한 변경
+$ chown -R postgres:postgres /u01 
+$ chmod -R 775 /u01
+
+$ chown -R postgres:postgres /usr/local/pgsql
+
+// 환경 변수 등록
+$ su postgres
+$ vi .bash_profile
+
+======================================
+
+export PGHOME=/usr/local/pgsql
+export PATH=$PGHOME/bin:$PATH
+export LD_LIBRARY_PATH=$PGHOME/lib:$LD_LIBRARY_PATH
+
+======================================
+
+$ vi .bashrc
+========================================================
+
+alias pglog='tail -f /u01/pgsql/${HOSTNAME}/log/postgresql.log'
+alias pgcnf='vi /u01/pgsql/pgsql-master/data/postgresql.conf'
+
+alias data='cd /u01/pgsql/${HOSTNAME}/data/'
+alias log='cd /u01/pgsql/${HOSTNAME}/log/'
+
+alias qq='psql -U postgres -d postgres'
+
+==========================================================
+
+// init db
+$ su - postgres
+$ cd /usr/local/pgsql/bin
+$ initdb -D /u01/pgsql/$HOSTNAME/data -E UTF8 --locale=C
+
+// 서버 가동
+$ pg_ctl -D /u01/pgsql/$HOSTNAME/data -l /u01/pgsql/$HOSTNAME/log/postgresql.log start
+$ psql -c "SELECT version();"
+                                                  version                                                  
+-----------------------------------------------------------------------------------------------------------
+ PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.5.0 20240719 (Red Hat 11.5.0-14), 64-bit
+(1 row)
+
+
+// systemctl 등록
+vi /etc/systemd/system/pgsql.service
+
+======================================
+
+[Unit]
+Description=PostgreSQL 18.4 database server
+After=network.target
+
+[Service]
+Type=notify
+User=postgres
+Group=postgres
+Environment=PGDATA=/u01/pgsql/pgsql-master/data
+Environment=PGHOME=/usr/local/pgsql
+ExecStart=/usr/local/pgsql/bin/postgres -D ${PGDATA}
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target
+
+=======================================
+
+systemctl daemon-reload
+systemctl enable pgsql
+systemctl start pgsql
+systemctl status pgsql
+systemctl stop pgsql
+
