@@ -1,0 +1,66 @@
+Postregsql Archive Mode
+
+
+
+$ su postgres
+
+-- db 접속 후 configle 위치 조회
+postgres=# show config_file;
+                 config_file                  
+----------------------------------------------
+ /u01/pgsql/pgsql-master/data/postgresql.conf
+(1 row)
+
+
+// archive 디렉토리 생성
+
+$ pwd
+/u01/pgsql/pgsql-master
+$ ll
+total 4
+drwx------ 19 postgres postgres 4096 Aug 11 23:00 data
+drwxrwxr-x  2 postgres postgres   28 Aug  4 16:46 log
+
+$ mkdir -p archive
+
+
+$ vi /u01/pgsql/pgsql-master/data/postgresql.conf
+
+========================================================
+
+wal_level 			= replica  	## 최소 replica 이상 필요
+archive_mode 		= on		## 재시작 필요함
+archive_timeout 	= 300		## 5분으로 설정
+archive_command 	= 'test ! -f /u01/pgsql/pgsql-master/archive/arch%f && cp %p /u01/pgsql/pgsql-master/archive/arch%f'
+
+=====================================================
+
+
+// 재시작
+
+$ systemctl restart pgsql
+or 
+-- wal_mode 변경안했을시는 config reload만
+postgres=# SELECT pg_reload_conf();
+
+
+//적용 확인
+
+postgres=# SHOW wal_level;
+postgres=# SHOW archive_mode;
+postgres=# SHOW archive_command;
+
+-- 강제 스위칭
+postgres=# SELECT pg_switch_wal();	
+
+-- 아카이브 상태 확인
+postgres=# SELECT * FROM pg_stat_archiver;
+
+ archived_count | last_archived_wal | last_archived_time | failed_count | last_failed_wal | last_failed_time |          stats_reset          
+----------------+-------------------+--------------------+--------------+-----------------+------------------+-------------------------------
+              0 |                   |                    |            0 |                 |                  | 2026-08-11 23:00:36.681372+09
+			  
+			  
+$ ll /u01/pgsql/pgsql-master/archive
+-rw------- 1 postgres postgres 16777216 Aug 12 03:54 000000010000000000000001
+-rw------- 1 postgres postgres 16777216 Aug 12 03:55 000000010000000000000002
